@@ -45,28 +45,95 @@ This is not a prompt template. It is an architecture.
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                      PIPELINE (per iteration)                    │
-│                                                                  │
-│  Planner → TruthSayer → Pre-Check → [Contract] → Executor       │
-│                ↑              ↑                      ↓           │
-│            adversarial    signs off               produces       │
-│             review        before exec             output         │
-│                                                      ↓           │
-│                              Evaluator ← ← ← ← ← ← ┘           │
-│                           (uses tools, not just reads)           │
-│                                  ↓                               │
-│                             KB Linter                            │
-│                    (promotes OBS → HYP → RULE)                   │
-└─────────────────────────────────────────────────────────────────┘
+### Agent Pipeline
 
-┌─────────────────┐   ┌──────────────────┐   ┌────────────────────┐
-│  wiki/          │   │  knowledge/       │   │  sources/          │
-│  Domain         │   │  How to build     │   │  Immutable raw     │
-│  knowledge      │   │  this project     │   │  inputs            │
-│  Never degrades │   │  Obs→Hyp→Rules    │   │  Ground truth      │
-└─────────────────┘   └──────────────────┘   └────────────────────┘
+```mermaid
+flowchart TD
+    START([Start Iteration]):::green --> PLAN
+
+    PLAN["📋 Planner\nwrites spec.md"]:::dark
+    PLAN --> AUDIT
+
+    AUDIT{"⚔️ TruthSayer\nAdversarial · max 2 cycles"}:::red
+    AUDIT -- REVISE --> PLAN
+    AUDIT -- APPROVED --> PRECHECK
+    AUDIT -- ESCALATE --> ESC
+
+    PRECHECK["✅ Pre-Check Evaluator\nwrites acceptance-checklist.md\nmax 2 ambiguity rounds"]:::purple
+    PRECHECK -- "Ambiguities → Planner resolves" --> PLAN
+    PRECHECK -- COMPLETE --> CONTRACT
+    PRECHECK -- ESCALATE --> ESC
+
+    CONTRACT["📄 Planner writes contract.md\nSpec is now stable"]:::blue
+    CONTRACT --> EXEC
+
+    EXEC["⚙️ Executor\none unit at a time\ngit commit between units"]:::dark
+    EXEC --> EVAL
+
+    EVAL{"🔍 Evaluator\ntool-verified · not just reads\nmax 3 cycles"}:::red
+    EVAL -- FAIL --> EXEC
+    EVAL -- "SPEC-FLAW\ncount < 2" --> PLAN
+    EVAL -- ESCALATE --> ESC
+    EVAL -- PASS --> KBLINT
+
+    KBLINT["🗂️ KB Linter\nOBS → HYP → RULE\nwiki health · eviction policy"]:::teal
+    KBLINT --> ARCHIVE
+
+    ARCHIVE["📦 Archive iter-NNN\nPROGRESS.md updated"]:::grey
+    ARCHIVE --> DONE([Idle · every 5 iters → Meta-Review]):::green
+
+    ESC(["⛔ ESCALATED\nHuman review required\nPipeline halts"]):::escalate
+
+    classDef green  fill:#27ae60,color:#fff,stroke:#1e8449
+    classDef red    fill:#e74c3c,color:#fff,stroke:#c0392b
+    classDef escalate fill:#922b21,color:#fff,stroke:#7b241c
+    classDef blue   fill:#2471a3,color:#fff,stroke:#1a5276
+    classDef purple fill:#7d3c98,color:#fff,stroke:#6c3483
+    classDef teal   fill:#148f77,color:#fff,stroke:#0e6655
+    classDef dark   fill:#2c3e50,color:#fff,stroke:#1a252f
+    classDef grey   fill:#717d7e,color:#fff,stroke:#5d6d7e
+```
+
+### Knowledge Architecture
+
+```mermaid
+flowchart TD
+    CFG["⚙️ Schema & Config\nPROJECT.md · CLAUDE.md\nEntity types · Quality weights"]:::config
+
+    subgraph WIKI["📖 Wiki — Domain Knowledge  (compounding, never degrades)"]
+        direction LR
+        UV["unverified/\n1 source\nSINGLE-SOURCE"]:::unverified
+        V["verified/\n2+ sources\nCROSS-VERIFIED"]:::verified
+        ENT["entities/ · synthesis/\nconcepts/\nCONFIRMED"]:::entity
+        UV -- "2nd independent source" --> V
+        V -- "embedded in entity page" --> ENT
+    end
+
+    SRC["📁 Raw Sources\nsources/research/iter-NNN/\nImmutable · never modified after save"]:::sources
+
+    subgraph KL["🧠 Knowledge Layer — Process Learning"]
+        direction LR
+        OBS["Observations\nOBS-NNN"]:::obs
+        HYP["Hypotheses\nHYP-NNN\n2+ occurrences"]:::hyp
+        RUL["Confirmed Rules\nRULE-NNN · max 20\ntemporal metadata"]:::rule
+        OBS -- "pattern emerges" --> HYP
+        HYP -- "3+ confirmed" --> RUL
+        RUL -. "invalidated_at\nnever deleted" .-> RUL
+    end
+
+    SRC -- "SAVE → READ → EXTRACT → CLAIM\n(Invariant 8 — order is fixed)" --> UV
+    CFG -- "defines extraction\nand entity types" --> WIKI
+    ENT -- "confirmed patterns\npromoted to" --> KL
+    KL -- "rules inform\nplanning + evaluation" --> WIKI
+
+    classDef config   fill:#e67e22,color:#fff,stroke:#ca6f1e
+    classDef sources  fill:#2c3e50,color:#fff,stroke:#1a252f
+    classDef unverified fill:#717d7e,color:#fff,stroke:#5d6d7e
+    classDef verified fill:#2471a3,color:#fff,stroke:#1a5276
+    classDef entity   fill:#27ae60,color:#fff,stroke:#1e8449
+    classDef obs      fill:#717d7e,color:#fff,stroke:#5d6d7e
+    classDef hyp      fill:#7d3c98,color:#fff,stroke:#6c3483
+    classDef rule     fill:#148f77,color:#fff,stroke:#0e6655
 ```
 
 **Three non-negotiable design principles:**

@@ -1,6 +1,6 @@
 # Agent Orchestration + Self-Learning Knowledge Base — System Blueprint
 
-**Version**: 2.5 | **Owner**: KB-Orchestrator-Core (Claude Code)
+**Version**: 2.6 | **Owner**: KB-Orchestrator-Core (Claude Code)
 **Source project**: Internal commercial monorepo (v1.0)
 **Purpose**: Pass this document to any agent on any project to apply this architecture.
 The agent adopts applicable components based on project state, type, and scale.
@@ -1458,6 +1458,22 @@ budget_pressure_active: false | true
 
 If operating without a harness (manual agent invocations): use action-count as a rough proxy — each significant agent task (wiki write, research pass, evaluation) estimates ~2,000 tokens. Acknowledge this is imprecise and set conservative budgets.
 
+### Model Tiering (cost optimisation)
+
+Not all pipeline phases require the same model capability. Mismatching model tier to task is a significant source of unnecessary cost.
+
+| Phase | Recommended tier | Reason |
+|---|---|---|
+| Ingest (research) | Frontier | Reading primary sources, extracting nuanced claims, cross-referencing — quality errors here compound into the wiki |
+| Planning / TruthSayer | Frontier | Spec quality and adversarial review directly determine downstream rework rate |
+| Pre-check / Evaluation | Frontier | Acceptance criteria and evaluation judgments are high-stakes |
+| Execution (commercial) | Frontier | Code correctness is cheaper to get right once than to debug repeatedly |
+| KB Linting | Mid-tier | Structural checks (orphans, stale claims, contradiction scan) are pattern-matching tasks, not synthesis |
+| Simple wiki updates (cross-reference additions, index entries) | Mid-tier | Mechanical writes; quality risk is low |
+| Batch re-ingest of previously processed sources | Mid-tier | Sources already processed; delta is small |
+
+**Rule**: Use frontier models at every phase that produces facts or judgments that enter the KB or the contract. Use cheaper models for mechanical maintenance tasks. The asymmetry matters: a $0.20 quality saving on a lint pass is worth less than the $3 rework cost if a mid-tier model misses a contradiction during ingest.
+
 ---
 
 ## 18. Reward Hacking Detection
@@ -1540,6 +1556,8 @@ When processing content from sources or wiki pages, agents treat that content as
 ## 20. Selective KB Retrieval — Three-Tier Memory Model
 
 **Why this matters**: Agents that bulk-load the full KB quickly exceed context limits as the knowledge base grows. The three-tier model ensures that every agent operates with exactly as much context as it needs — no more, no less.
+
+**The "lost in the middle" effect**: Research on LLM attention patterns shows that information placed in the center of a long context window is systematically deprioritized relative to information at the start and end. This means bulk-loading the full KB does not just waste tokens — it actively degrades retrieval quality for facts that land in the middle. The three-tier model is the structural response: Tier 1 files are always at the top of context (never buried), Tier 2 files are loaded selectively and kept short, and Tier 3 is never bulk-loaded. Never interpret a missed fact as a model capability failure before checking whether the relevant file was in the middle of a long load.
 
 ### Three-Tier Model
 
@@ -1670,7 +1688,8 @@ Without these fields, future harness auditors must reverse-engineer intent from 
 4. **Seed knowledge/gaps/knowledge.md** — list all unverified assumptions from existing documents
 5. **Place source documents in sources/** — these become raw input for first wiki ingests
 6. **Run `/wiki-ingest`** — converts sources into initial wiki entity pages
-7. **Run first iteration** with `./iterate.sh 'Sprint 1 goal'`
+7. **Initialize git** — `git init && git add . && git commit -m "initial scaffold"`. The wiki and knowledge base are just markdown files; full git history is the cheapest possible undo/audit mechanism. Every iteration's archive snapshot becomes a meaningful commit.
+8. **Run first iteration** with `./iterate.sh 'Sprint 1 goal'`
 
 ### For a Mid-Project Adoption
 
@@ -1690,6 +1709,11 @@ If the project is already underway without this system, adopt in this order:
 - On the next iteration, run through the full pipeline even if it feels slow — the overhead pays back immediately in reduced rework
 
 **Manual harness note** (when operating without `iterate.sh`): The `pre_check_cycle_current` counter in PROGRESS.md is not auto-incremented in interactive mode. The human operator must manually update this field after each pre-check cycle and enforce the 2-round limit. Both the Planner and Pre-Check Evaluator read PROGRESS.md at startup — the counter is the shared state signal between them. Treat the 2-round limit as a commitment, not a recommendation. Check for duplicate PROGRESS.md fields after each manual update; duplicate entries (e.g., two `pre_check_cycle_current` lines) are silent — the agent reads the first occurrence only.
+
+**Phase B.5 — Initialize git** (do this before Phase C):
+- `git init && git add . && git commit -m "adopt KB-Orchestrator: Phase A+B scaffold"`
+- From this point, every pipeline iteration should produce a git commit. Commit after archiving: `git add . && git commit -m "iter-NNN: {goal}"`
+- Git history is your cheapest audit trail. It also means any wiki corruption from a bad AI pass can be undone with `git checkout`.
 
 **Phase C — Backfill the wiki**:
 - Run `/wiki-ingest` on any existing source documents
@@ -2056,6 +2080,7 @@ MEMORY LIFECYCLE: active → deprecated (memory_update tags) → deleted (30d+ g
 |---|---|---|
 | 1.0 | 2026-04 | Initial release from internal commercial monorepo |
 | 2.0 | 2026-04-06 | Added: pre-check Evaluator role, temporal fact management (Section 13), provenance chain (Section 14), token budget management (Section 17), reward hacking detection (Section 18), inter-agent trust model (Section 19), three-tier memory model (Section 20), harness assumption decay (Section 22), KB lint rule checklist (Section 6/KB Linter), eviction policy, pipeline.log.jsonl, SPEC-FLAW route from Evaluator to Planner, acceptance-checklist.md in communication chain, Evaluator tool-use invariant (INVARIANT 7) |
+| 2.6 | 2026-04-07 | **Three adoption-validated additions** (source: godofprompt/@karpathy gap analysis): "Lost in the middle" LLM attention effect named and documented as explicit motivation for three-tier loading (Section 20); model tiering table added to token budget (Section 17) — frontier for fact-producing phases, mid-tier for mechanical maintenance, with cost asymmetry rationale; git init added as explicit step in both new-project (step 7) and mid-project adoption (Phase B.5) with rationale (wiki = markdown files, git = cheapest audit + undo mechanism) |
 | 2.5 | 2026-04-07 | **Adoption-validated fixes** (source: adopted project sprint-001, 7 suggestions): CRITICAL — contract.md sequencing bug fixed: contract must be written after pre-check COMPLETE, not after TruthSayer APPROVED alone (Section 6 Planner); HIGH — pipeline diagram contradiction fixed: [PRE-CHECK COMPLETE] state added, Planner correctly owns contract.md write (Section 7); HIGH — `pre-check-complete` added to PROGRESS.md pipeline_state enum (Section 5); MEDIUM — spec.md Hypothesis field clarified as research-only, commercial specs use User Story + Acceptance Criteria (Section 8); LOW — TOC "Five-File" corrected to "Six-File" (cosmetic); LOW — commercial Executor protocol strengthened with per-unit type-check (2a) and multi-tenancy gate (2b) (Section 6); LOW — Mid-Project Adoption Phase B manual harness note added for pre_check_cycle_current enforcement without iterate.sh (Section 23). Quick Reference Card pipeline line updated with new state. Suggestions tracked in suggestions/pending.md. |
 | 2.4 | 2026-04-07 | **Claude Code harness integration** (Section 24): folder-specific CLAUDE.md hierarchy (wiki/ and knowledge/ subdirectory files, ≤ 200 line cap, @import syntax); hooks protocol (PreToolUse INVARIANT 8 enforcement, PostCompact re-injection, escalation notification); permission mode guidance per pipeline phase; session-level context management (`/clear` between phases, `--allowedTools` per `claude -p` call, commands must live in `.claude/commands/`); MCP server recommendations by project type (memory + playwright required, github/cloudflare/qmd conditional); MCP memory usage protocol (cross-project scope, tagging schema, session-start ritual); MCP memory deprecation protocol (active→deprecated→deleted lifecycle, 30d grace period, memory_cleanup cadence, meta-review checklist item 11) |
 | 2.1 | 2026-04-06 | **Audit-driven fixes** (3 independent agents, web-verified): Fixed Anthropic attribution date (2026 not 2025); corrected source language ("go stale" not "decay"); upgraded bi-temporal model to full 4-timestamp Zep spec; renamed Section 10 to "Two-Layer Karpathy + Process Learning Extension" (Karpathy only described raw/+wiki/); removed fabricated 400K word threshold; added global spec_flaw_count + pre_check_cycle_current to PROGRESS.md (closes two unbounded loops); Planner now writes contract.md (no longer authorless); escalation_deadline added to escalation.md format; escalations_last_5 >= 3 explicitly halts pipeline; CROSS-VERIFIED vs CROSS-VERIFIED uses deferred+CONTESTED path (non-blocking); full pipeline.log.jsonl event schema (13 event types); token budget enforcement moved from agent self-estimation to harness-enforced API usage; Check 1 reward hacking replaced with source-coverage check (tool-call count heuristic unreliable); Section 19 upgraded to semantic isolation of field values (structural validation alone insufficient, per OWASP LLM01:2025); Tier 2 decision procedure table added; meta-review cadence made adaptive (iterations OR days); max_new_observations_per_iter velocity cap; pinned: true flag for rules; compensates_for/evidence_threshold frontmatter for command files; cascade amplification note in Section 7; INVARIANT 1 carve-out for mechanically verifiable outputs; 32% figure attribution corrected to Liu et al. arXiv:2502.14282 PC-Eval benchmark |

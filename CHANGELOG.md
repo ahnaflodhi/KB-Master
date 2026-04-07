@@ -30,6 +30,18 @@
 
 `suggestions/` directory created with `pending.md` index. Adoption projects file suggestions there; blueprint owner reviews and applies generalizable ones. This batch moved from `pending` to `APPLIED` status on the same day.
 
+## v2.6 — 2026-04-07
+
+**Source**: Gap analysis against godofprompt/@karpathy knowledge base article (222K views, Apr 7 2026). Three additions from cross-referencing their failure mode documentation against our blueprint coverage.
+
+**"Lost in the middle" named in Section 20**: The three-tier loading model existed but its motivation was under-documented. Added explicit paragraph naming the LLM attention deprioritization effect and explaining why Tier 1 files are always positioned at the top of context. Helps adopters understand *why* the tiering matters, not just *what* it does.
+
+**Model tiering table added to Section 17**: Production cost analysis shows that using frontier models for mechanical maintenance (KB linting, simple cross-reference updates) is a significant source of unnecessary spend. Added a phase-by-phase model tier recommendation with the asymmetry rationale: quality errors at ingest/eval phase compound into the KB and cost far more to fix than the savings from using a cheaper model.
+
+**Git init added to Sections 23**: Both the new-project scaffold (step 7) and mid-project adoption (Phase B.5) now explicitly include `git init` as a required step. Rationale: the wiki and knowledge base are markdown files. Git provides full audit history, branch-based experimentation, and instant undo for bad AI passes — at zero incremental cost.
+
+**Article draft published**: `article-draft.md` — full newsletter/article for external publication covering the full orchestration workflow, six structural additions beyond Karpathy's pattern, adoption at any stage, and honest failure modes.
+
 ## v2.4 — 2026-04-07
 
 **Source**: Gap analysis against Claude Code best practices documentation (April 2026). All MCP memory tool schemas verified against live mcp__memory__ tool definitions.

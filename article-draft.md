@@ -4,9 +4,9 @@
 
 ---
 
-222,000 people viewed the godofprompt breakdown of Karpathy's LLM knowledge base pattern last week.
+222,000 people viewed the @godofprompt breakdown of Karpathy's LLM knowledge base pattern this week.
 
-95,000 bookmarked Karpathy's original gist.
+Karpathy's original tweet drew 95,000 X bookmarks and 17 million views. The GitHub gist he dropped two days later hit 5,000+ stars and 1,400+ forks.
 
 Most will never build it.
 
@@ -49,7 +49,7 @@ Karpathy himself called the pattern "a hacky collection of scripts." The failure
 
 **Reward hacking**: Agents optimise for satisfying the evaluator's surface checks. A wiki page that *looks* well-cited isn't the same as one that *is* well-sourced. Without independent verification, these are indistinguishable.
 
-**Context blindspots**: LLMs deprioritize information in the middle of long context windows — the "lost in the middle" effect. Bulk-loading the entire wiki means the facts you most need are often exactly where attention is weakest.
+**Context blindspots**: LLMs deprioritize information in the middle of long context windows — the "lost in the middle" effect (Liu et al., 2023). Bulk-loading the entire wiki means the facts you most need are often exactly where attention is weakest.
 
 The basic Karpathy pattern solves the compounding problem. It doesn't solve any of these five.
 
@@ -131,7 +131,7 @@ Our fix: before execution begins, the Pre-Check Evaluator reads the spec and wri
 
 The Evaluator's later judgment must reference this signed checklist — not re-interpret the original spec.
 
-This eliminates non-convergence. Verified in production: the pre-check step removes the majority of evaluation-cycle rework.
+This eliminates non-convergence. In our first commercial adoption run, three of five evaluation failures traced back to spec ambiguities that pre-check would have caught before a single line of code was written.
 
 ---
 
@@ -284,16 +284,6 @@ In the spirit of Karpathy (who called his own work "a hacky collection of script
 
 ---
 
-## What This Changes for You
-
-If you are running research projects: every source you add makes your next query answer better. Every question you ask can compound into the wiki. By month 3, the system knows your domain better than a new hire.
-
-If you are building commercial products: you have a pipeline that prevents the three failure modes that kill LLM-assisted projects — spec drift, sycophancy collapse, and hallucination laundering. The contract exists. The adversarial review happened. The Evaluator ran the tests.
-
-If you are somewhere in between: the hybrid project_type exists. Research and build share the same KB. Domain knowledge from the wiki informs every feature spec. Build decisions feed back as confirmed rules.
-
----
-
 ## Get the Blueprint
 
 Everything described in this article is in the open-source reference repo:
@@ -312,3 +302,16 @@ The blueprint is designed to be passed directly to an agent. The agent reads it 
 ---
 
 *The system described here is v2.6 of an actively maintained blueprint. Improvements from production adoption runs are accepted via the suggestions protocol in the repo.*
+
+---
+
+**Sources & attribution**
+
+- Andrej Karpathy — LLM Knowledge Base Architecture (GitHub Gist, April 2026)
+- @godofprompt — "Karpathy's second brain: how to build it" (X/Twitter, April 7 2026, 222K views)
+- Liu et al. (2023) — "Lost in the Middle: How Language Models Use Long Contexts" — NeurIPS 2023
+- Zep / Graphiti (arXiv:2501.13956) — bi-temporal knowledge graph, four-timestamp model
+- Anthropic Engineering (March 2026) — sprint contract pattern, harness assumption decay
+- Google DeepMind (arXiv:2603.04474) — error cascade amplification in sequential pipelines
+- OWASP LLM Top 10 (2025) — prompt injection (LLM01), vector weaknesses (LLM08)
+- Shopify Engineering (2025) — reward hacking taxonomy

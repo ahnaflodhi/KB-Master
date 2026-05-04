@@ -2,10 +2,13 @@
 
 **A production-validated blueprint for LLM-assisted projects that don't hallucinate, drift, or forget.**
 
-[![Blueprint Version](https://img.shields.io/badge/blueprint-v2.5-blue)](SYSTEM-BLUEPRINT.md)
+[![Blueprint Version](https://img.shields.io/badge/blueprint-v2.8-blue)](SYSTEM-BLUEPRINT.md)
+[![Restructure In Progress](https://img.shields.io/badge/v3.0-in--migration-orange)](CHANGELOG.md)
 [![Claude Code Native](https://img.shields.io/badge/Claude%20Code-native-8A2BE2)](https://claude.ai/code)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](suggestions/pending.md)
 [![Research Backed](https://img.shields.io/badge/research-Karpathy%20%7C%20Anthropic%20%7C%20Zep%20%7C%20OWASP-orange)](#research-foundation)
+
+> **v3.0 restructure in progress** — the 2,464-line monolith is being decomposed into a multi-file, bundle-loadable structure (numbered directories `00-overview/` through `80-status/` + `bundles/*.yaml`). During migration, agents may continue to load `SYSTEM-BLUEPRINT.md` directly; post-migration, agents load only their role's bundle (~3.5k tokens vs. ~70k). See `CHANGELOG.md` v2.8.1 onward for migration progress.
 
 ---
 
@@ -159,12 +162,14 @@ You don't need all of it. The [Minimum Viable Adoption](#minimum-viable-adoption
 
 ```
 KB-Orchestrator-Core/
-├── SYSTEM-BLUEPRINT.md       ← The canonical reference (24 sections, ~2,500 lines)
+├── SYSTEM-BLUEPRINT.md       ← The canonical reference (25 sections, ~2,500 lines) — v3.0 migration target: compiled view from Layer-2 sources
+├── agents.config.yaml        ← v2.8 — service-agnostic agent registry (adapters/agents/roles/validation/policy)
 ├── CHANGELOG.md              ← Full version history with audit findings
 ├── CLAUDE.md                 ← How this repo operates and evolves
 ├── commands/
-│   └── pre-check.md          ← Canonical Pre-Check Evaluator slash command
-├── audits/                   ← 3 independent adversarial audit reports
+│   ├── _delegate.md          ← v2.8 orchestrator dispatch shim (NOT user-invokable; composed by role-bearing commands)
+│   └── pre-check.md          ← Pre-Check Evaluator slash command (10 more role-bearing commands to be written in v3.0 Phase 5)
+├── audits/                   ← Independent adversarial audit reports
 ├── research/sources/         ← Karpathy LLM wiki deep research + source library
 └── suggestions/
     └── pending.md            ← Adoption-project suggestions tracker
@@ -182,6 +187,7 @@ KB-Orchestrator-Core/
 | 20–22 | Selective Retrieval (3-tier), Meta-Review, Harness Decay |
 | 23 | Adoption Guide (new and mid-project) |
 | 24 | Claude Code Harness Integration (hooks, MCP, permissions, CLAUDE.md hierarchy) |
+| 25 | **External Agent Delegation Protocol** (v2.8) — service-agnostic adapter/agent/role architecture; Codex bridge integration; verification ledger |
 
 ---
 
@@ -190,14 +196,15 @@ KB-Orchestrator-Core/
 ### Option A — Drop the blueprint into an existing project
 
 ```bash
-# Copy the blueprint into your project
+# Copy the blueprint into your project (during v2.x — pre-restructure adoption)
 cp SYSTEM-BLUEPRINT.md your-project/
+cp agents.config.yaml your-project/         # v2.8 — agent registry
+cp -r commands/ your-project/.claude/        # _delegate.md + pre-check.md
 
-# Generate slash commands from Section 6 + 9 role descriptions
-mkdir -p your-project/.claude/commands/
-cp commands/pre-check.md your-project/.claude/commands/
-# Generate the remaining 11 commands (plan, audit, execute, evaluate, kb-lint, ...)
-# from the role descriptions in Sections 6 and 9
+# The 10 remaining role-bearing slash commands (plan, audit, execute, evaluate,
+# kb-lint, wiki-ingest, wiki-query, escalate, meta-review, apply-meta) are
+# scheduled for v3.0 Phase 5; write them now from §6/§9 role descriptions if
+# adopting before then, or wait for the bundle-loading version.
 ```
 
 Then pass the blueprint to Claude Code:

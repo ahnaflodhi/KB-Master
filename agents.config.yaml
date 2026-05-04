@@ -1,0 +1,348 @@
+# Agent Registry & Role Assignments
+#
+# This file is the service-agnostic wiring between blueprint roles (§6) and
+# concrete agent runtimes. The orchestrator (claude-main) loads this at session
+# start and uses it to dispatch every role invocation through an adapter.
+#
+# Three layers (see §25 of SYSTEM-BLUEPRINT.md):
+#   1. ADAPTERS  — protocol type (how to invoke an agent runtime)
+#   2. AGENTS    — concrete instances bound to an adapter, with config
+#   3. ROLES     — blueprint roles mapped to agent names
+#
+# Editing this file is the supported way to add/swap agents. The blueprint
+# itself never names a specific agent — it only names roles.
+#
+# The orchestrator role is special: it is non-delegable (Invariant 9). It must
+# always map to the running Claude Code session (claude-main). Any other
+# assignment is a configuration error and the orchestrator will refuse to start.
+
+schema_version: 1
+config_revision: 3                # bump on every edit; recorded in verification ledger
+last_updated: 2026-05-04
+
+# ---------------------------------------------------------------------------
+# 1. ADAPTERS — protocol-layer drivers. One per agent type.
+# ---------------------------------------------------------------------------
+# An adapter is the strategy implementation that knows how to turn a generic
+# delegation request (role, prompt, sandbox, model) into a concrete invocation
+# of a specific agent runtime. Adding a new agent type = adding a new adapter
+# block here. Adding a new instance of an existing type = adding to AGENTS.
+
+adapters:
+
+  # The Claude orchestrator's own context. Singleton. Never spawned.
+  # Used only by the orchestrator role itself.
+  claude-orchestrator:
+    kind: native-orchestrator
+    notes: "The running Claude Code session. Cannot be invoked as an executor."
+    enforces_pre_action_facts: true               # Invariant 10 — gateguard skill is configured at the harness level
+    pre_action_fact_mechanism: gateguard-skill
+    # §25 v2.10 — claude-main runs in the host shell with no sandbox; full host-local service access.
+    host_access:
+      loopback_tcp: true
+      unix_sockets: true
+
+  # Spawn a fresh Claude instance via Claude Code's Task tool with a subagent
+  # type, OR via the Claude Agent SDK as a separate process. Either way: a
+  # different context from the orchestrator → satisfies Generator≠Evaluator
+  # at process/context level (§24, Invariant 1).
+  claude-native:
+    kind: claude-native
+    sub_modes:
+      - subagent              # in-process via Task(subagent_type=...)
+      - sdk                   # separate process via Claude Agent SDK
+    default_sub_mode: subagent
+    capability_check: "Task tool available OR @anthropic-ai/claude-agent-sdk on PATH"
+    enforces_pre_action_facts: true               # Invariant 10 — workers inherit gateguard from the parent harness on subagent mode; SDK mode REQUIRES explicit pre-tool guard registration
+    pre_action_fact_mechanism: gateguard-skill   # subagent: inherited; sdk: must be configured per-process
+    # §25 v2.10 — claude-native workers share the orchestrator's host process (subagent) or run as
+    # local SDK processes; both have full host-local service access by default.
+    host_access:
+      loopback_tcp: true
+      unix_sockets: true
+
+  # Codex CLI via codex-task-bridge. Contract: ../claude-codex-orchestration/BRIDGE_REQUIREMENTS.md
+  # The orchestrator probes `version` first; treats non-responsive as protocol 1.
+  codex-bridge:
+    kind: cli-bridge
+    binary_path: ../claude-codex-orchestration/codex_scaffold/bin/codex-task-bridge
+    bootstrap_probe:
+      version_command: ["version"]
+      capabilities_command: ["capabilities", "--json"]
+      timeout_seconds: 2
+    fallback_protocol: 1      # if probe fails, treat as MVP-only
+    artifact_dir_root: ../claude-codex-orchestration/codex_scaffold/runtime/codex-jobs
+    # Invariant 10 — Codex via the MVP bridge has NO pre-action fact-presentation gate
+    # at the bridge layer. The orchestrator compensates by performing the fact
+    # presentation HERE (in claude-main's user-visible output) for every dispatch
+    # before invoking `codex-task-bridge run --mode implement`. Concretely: for
+    # each dispatch the orchestrator emits the §25-mandated 4-fact block
+    # (request | what the dispatch produces | target_path | adapter+sandbox)
+    # as user-visible text immediately before the bridge invocation.
+    # When bridge protocol >= 2 ships an in-process pre-action callback, this
+    # field flips to true and the per-dispatch shim is removed.
+    enforces_pre_action_facts: orchestrator-side    # tri-state: true | false | orchestrator-side
+    pre_action_fact_mechanism: orchestrator-emitted-block
+    # §25 v2.10 — Stage-4 evidence (../claude-codex-orchestration/BRIDGE_REQUIREMENTS.md
+    # §"Local service / socket access", lines 165-192): a `--mode implement` Codex job
+    # launched specifically to run psql still reported the database cluster as unavailable.
+    # The bridge does NOT advertise host-local service capability; orchestrator MUST treat
+    # this as deny-deny until a future bridge protocol exposes `capabilities --json` with
+    # an explicit host_access field. Until then, roles requiring host-local services
+    # (e.g. live psql, Redis, Docker) MUST NOT be dispatched to codex-bridge — the
+    # orchestrator pre-injects required query results or invokes a host-side wrapper
+    # outside the delegated job and passes its output as read-only evidence.
+    host_access:
+      loopback_tcp: false
+      unix_sockets: false
+    # Cached probe result — bridge sanity check performed by claude-main during v3.0 Phase 2.
+    # The orchestrator MAY trust this value within the same calendar day; otherwise re-probe.
+    # Re-run the probe (claude-main inline) when bridge binary mtime changes or weekly.
+    cached_protocol_probe:
+      protocol: 1                                       # MVP — `version` subcommand returned non-zero per BRIDGE_REQUIREMENTS bootstrap
+      probed_at: 2026-05-04
+      notes: "version subcommand not implemented; available: run/start/status/tail/result/list/help. No --sandbox first-class, no --mode review, no raw, no capabilities --json. Slash commands MUST guard non-MVP surface behind this protocol value."
+
+  # Reserved for future agents. Each block below is a template; uncomment and
+  # fill in when the adapter implementation lands. Do not enable an adapter
+  # block until its capability_check passes — the orchestrator will refuse to
+  # dispatch through an unimplemented adapter.
+  #
+  # openai-compat-http:
+  #   kind: http-api
+  #   protocol: openai-chat-completions-v1
+  #   base_url_env: MISTRAL_API_BASE     # read from env, never hard-coded
+  #   api_key_env: MISTRAL_API_KEY
+  #   timeout_seconds: 120
+  #
+  # cursor-cli:
+  #   kind: cli-bridge
+  #   binary_path: cursor-agent
+  #   bootstrap_probe:
+  #     version_command: ["--version"]
+  #
+  # mcp-agent:
+  #   kind: mcp-server
+  #   server_name: "<mcp server name from .mcp.json>"
+
+# ---------------------------------------------------------------------------
+# 2. AGENTS — named instances. Each binds to one adapter with its own config.
+# ---------------------------------------------------------------------------
+# An agent is what the role-assignment table actually names. Multiple agents
+# can share the same adapter (e.g. claude-worker-planner and claude-worker-eval
+# both use claude-native but with different model/system-prompt/sandbox).
+
+agents:
+
+  # The orchestrator. Singleton. Always present. Always mapped to the
+  # `orchestrator` role. Cannot be spawned, cannot be replaced at runtime.
+  claude-main:
+    adapter: claude-orchestrator
+    model: claude-opus-4-7
+    is_orchestrator: true
+    capabilities:
+      - dispatch
+      - schema-validate
+      - verification-ledger-write
+      - pipeline-state-write
+      - escalation
+
+  # Claude executor pool. The orchestrator dispatches role work to these
+  # instead of doing it inline — preserving Generator≠Evaluator separation
+  # even when both ends are Claude (just different contexts).
+  claude-worker-planner:
+    adapter: claude-native
+    sub_mode: subagent
+    model: claude-opus-4-7
+    system_role_hint: "blueprint-planner"
+    sandbox: read-only
+    capabilities: [plan, draft-spec]
+
+  claude-worker-precheck:
+    adapter: claude-native
+    sub_mode: subagent
+    model: claude-sonnet-4-6           # mid-tier for mechanical checklist work (§17)
+    system_role_hint: "blueprint-pre-check"
+    sandbox: read-only
+    capabilities: [pre-check, ambiguity-detection]
+
+  claude-worker-research:
+    adapter: claude-native
+    sub_mode: subagent
+    model: claude-opus-4-7
+    system_role_hint: "blueprint-executor-research"
+    sandbox: workspace-write
+    capabilities: [research-execute, wiki-write, source-save]
+
+  claude-worker-commercial:
+    adapter: claude-native
+    sub_mode: subagent
+    model: claude-opus-4-7
+    system_role_hint: "blueprint-executor-commercial"
+    sandbox: workspace-write
+    capabilities: [commercial-execute, code-write, git-commit]
+
+  claude-worker-kblint:
+    adapter: claude-native
+    sub_mode: subagent
+    model: claude-sonnet-4-6           # mechanical maintenance (§17)
+    system_role_hint: "blueprint-kb-linter"
+    sandbox: workspace-write
+    capabilities: [kb-lint, promotion, eviction]
+
+  claude-worker-wiki-ingest:
+    adapter: claude-native
+    sub_mode: subagent
+    model: claude-opus-4-7
+    system_role_hint: "blueprint-wiki-ingester"
+    sandbox: workspace-write
+    capabilities: [wiki-ingest, claim-extraction]
+
+  claude-worker-wiki-query:
+    adapter: claude-native
+    sub_mode: subagent
+    model: claude-sonnet-4-6
+    system_role_hint: "blueprint-wiki-querier"
+    sandbox: read-only
+    capabilities: [wiki-query, synthesis]
+
+  # Codex executor pool. Bridge-delegated. Process isolation is OS-enforced
+  # (separate process + sandbox = stronger Generator≠Evaluator than Claude
+  # subagent alone).
+  codex-audit:
+    adapter: codex-bridge
+    bridge_mode: design                # protocol 1 fallback; review when protocol >= 2
+    sandbox: read-only
+    model: gpt-5-codex
+    capabilities: [adversarial-review, spec-audit]
+
+  codex-eval:
+    adapter: codex-bridge
+    bridge_mode: design                # upgrades to `review` once bridge protocol >= 2
+    sandbox: read-only
+    model: gpt-5-codex
+    capabilities: [evaluate, claim-verification, reward-hacking-check]
+
+  # Optional Codex executor — for commercial work where adversarial diversity
+  # at execution stage is desired (executor: codex, evaluator: claude → cross-family).
+  codex-implement:
+    adapter: codex-bridge
+    bridge_mode: implement
+    sandbox: workspace-write
+    model: gpt-5-codex
+    capabilities: [commercial-execute, code-write]
+
+# ---------------------------------------------------------------------------
+# 3. ROLES — blueprint role → agent name. The active assignment.
+# ---------------------------------------------------------------------------
+# Every role from §6 must be assigned to exactly one agent (or one per project
+# subtype where the role splits, e.g. executor:research vs executor:commercial).
+# An unassigned role fails fast at orchestrator startup.
+#
+# To swap an agent for a role: change the value here. No code edits required.
+# To A/B test: temporarily duplicate a role under `experiments` (see §25).
+
+roles:
+  orchestrator: claude-main          # NON-DELEGABLE (Invariant 9). Must be claude-main.
+
+  planner: claude-worker-planner
+  truthsayer: codex-audit            # Codex for adversarial-family diversity
+  pre_check: claude-worker-precheck
+
+  executor:
+    research: claude-worker-research
+    commercial: claude-worker-commercial   # swap to codex-implement for cross-family
+
+  evaluator: codex-eval              # different family from executor → diversity
+  kb_linter: claude-worker-kblint
+  wiki_ingest: claude-worker-wiki-ingest
+  wiki_query: claude-worker-wiki-query
+  meta_review: claude-worker-planner   # reuses Claude planner config — read-only meta work
+  apply_meta: claude-main              # mutates CLAUDE.md/commands — orchestrator-only by policy
+
+# ---------------------------------------------------------------------------
+# 4. VALIDATION — orchestrator's verification policy for delegated output.
+# ---------------------------------------------------------------------------
+# These knobs control the verification mechanism §25 defines. They are NOT
+# negotiable per agent — every delegated output runs through the same gate.
+# What varies is severity and sample rate, not whether validation runs.
+
+validation:
+  schema_validate_all_outputs: true             # §19, structural + semantic
+  semantic_isolation_required: true             # §19 v2.1 addendum
+  reward_hacking_check_on_delegated: true       # §18, mandatory on every consume
+  source_recheck_sample_rate: 0.20              # orchestrator re-fetches 20% of cited URLs
+  cross_family_evaluator_preferred: true        # warn if executor & evaluator share a model family
+  verification_ledger_path: pipeline/verification-ledger.jsonl
+  on_validation_failure: re-delegate            # options: re-delegate | escalate | route-to-planner
+  re_delegate_max_attempts: 1                   # then escalate
+
+# ---------------------------------------------------------------------------
+# 5. POLICY — orchestrator-enforced rules independent of any agent.
+# ---------------------------------------------------------------------------
+policy:
+  # Invariant 9 — orchestrator role can only be claude-main.
+  orchestrator_must_be: claude-main
+
+  # Disallow any role being filled by an agent advertising is_orchestrator: true
+  # except the orchestrator role itself.
+  orchestrator_agent_reserved: true
+
+  # Cycle limits (mirrors §6 / §7). Orchestrator-tracked, not agent-tracked.
+  audit_cycle_max: 2
+  eval_cycle_max: 3
+  pre_check_ambiguity_round_max: 2
+  spec_flaw_count_escalation_threshold: 2
+
+  # Adversarial diversity preference (advisory — warns, does not block).
+  warn_if_audit_and_executor_same_agent: true
+  warn_if_eval_and_executor_same_model_family: true
+
+  # Invariant 10 — Pre-action fact presentation (v2.9).
+  # Every state-mutating tool call (Bash, Edit, Write, MultiEdit, NotebookEdit,
+  # delegated dispatch, network POST/PUT/DELETE, MCP write tools) MUST be
+  # preceded by a user-visible statement of (a) the current request and
+  # (b) what the action verifies/produces. Enforced at the harness layer
+  # via PreToolUse hook (Claude Code: gateguard skill; other runtimes: an
+  # equivalent guard registered with the adapter).
+  #
+  # The orchestrator reads `enforces_pre_action_facts` from each adapter's
+  # probe response. Adapters where this is false MAY only be assigned to
+  # read-only roles. Config load fails fast if a state-mutating role
+  # (executor.commercial, kb_linter, wiki_ingest, apply_meta) is bound to
+  # an agent whose adapter cannot enforce the gate.
+  pre_action_fact_presentation_required: true
+  pre_action_fact_enforcement_mechanism: gateguard-skill   # or: pretooluse-hook | command-wrapper | adapter-native
+  on_pre_action_fact_missing: reject                       # options: reject | warn  (warn permitted only with documented justification in escalation.md)
+  state_mutating_tools:                                    # the canonical list the gate applies to (carve-out: read-only + task-tracker tools)
+    - Bash
+    - Edit
+    - Write
+    - MultiEdit
+    - NotebookEdit
+    - Task           # spawning a subagent is a side-effecting external invocation
+    - WebFetch       # only when destination is NOT sources/ — research carve-out applies otherwise
+    - mcp:write      # any MCP tool whose contract mutates external state
+
+  # §25 v2.10 — Host-local service access capability.
+  # Source: ../claude-codex-orchestration/BRIDGE_REQUIREMENTS.md §"Local service / socket access"
+  # (lines 165-192), authored by Codex after Stage-4 evidence: a `--mode implement` Codex
+  # job launched specifically to run psql still reported the database cluster as unavailable.
+  # Lesson: workspace-write/--full-auto/implement are filesystem and approval-mode
+  # directives — they do NOT imply loopback TCP or Unix-socket reachability.
+  #
+  # Each adapter advertises `host_access: {loopback_tcp: bool, unix_sockets: bool}` in its
+  # probe response (or in this file as a static declaration when the adapter does not yet
+  # support `capabilities --json`). The orchestrator MUST refuse to dispatch a host-local
+  # service-dependent role to an adapter where the corresponding subfield is false.
+  #
+  # Default-deny: if an adapter's probe omits host_access, the orchestrator treats both
+  # subfields as false. This makes the policy fail-closed against silent regressions.
+  assume_host_access_false_unless_probed: true
+  on_host_access_missing_for_required_role: escalate       # options: escalate | reroute (try next adapter) | inline (orchestrator runs the host call itself)
+  host_local_service_dependent_roles:                      # roles where dispatch is denied unless host_access advertises a capability
+    - executor.commercial   # may need live DB inspection, container runtimes, or app-server probes
+    - kb_linter             # MAY need to re-validate citations against host-local doc servers
+    # Note: research roles (planner, truthsayer, evaluator on research projects, wiki_ingest,
+    # wiki_query, meta_review, apply_meta, pre_check) do NOT depend on host-local services
+    # and can be safely dispatched to adapters with host_access false-false.

@@ -52,5 +52,5 @@ If ambiguities are listed:
 - Then /pre-check is re-run against the revised spec
 
 If no ambiguities:
-- Set pipeline_state to 'pre-checked' in PROGRESS.md
+- Set pipeline_state to 'pre-check-complete' in PROGRESS.md (canonical enum value per blueprint §5/§7; v2.5 introduced this name and v2.8 Invariant 9 reserves pipeline_state writes to the orchestrator)
 - Print: "PRE-CHECK COMPLETE — acceptance-checklist.md written. Run /execute after contract.md agreed."

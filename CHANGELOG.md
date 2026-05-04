@@ -1,5 +1,268 @@
 # Changelog — SYSTEM-BLUEPRINT.md
 
+## v2.10 — 2026-05-04
+
+**Source**: Codex-authored update to the bridge contract — `../claude-codex-orchestration/BRIDGE_REQUIREMENTS.md` §"Local service / socket access" (lines 165-192). Trigger: a Stage-4 failure where a Codex job launched via `codex-task-bridge run --mode implement` specifically to run `psql` reported the database cluster as unavailable, despite holding `workspace-write` and `--full-auto`. Codex correctly diagnosed that `workspace-write`, `--full-auto`, and `implement` mode are filesystem and approval-mode directives that do NOT imply loopback TCP or Unix-socket reachability, and recommended an additive `host_access: {loopback_tcp: bool, unix_sockets: bool}` capability on `capabilities --json`. This release propagates the lesson to the orchestrator side of the contract.
+
+### Added
+
+- **`SYSTEM-BLUEPRINT.md` §25 adapter `probe` row.** Extended return shape to require `host_access: {loopback_tcp: bool, unix_sockets: bool}`. Missing/partial fields default to `false` (deny). Adapters that have not advertised a capability MUST NOT be dispatched to roles that require host-local services.
+- **`SYSTEM-BLUEPRINT.md` §25 — new subsection "Sandbox flags do not imply host-local service access (v2.10)".** Formalises the orchestrator-side rule mirrored from BRIDGE_REQUIREMENTS:165-192. Documents the degradation pattern: pre-inject required query results, or invoke a host-side wrapper outside the delegated job.
+- **`SYSTEM-BLUEPRINT.md` §25 "does NOT do".** New bullet: this section does not grant host-local service access by virtue of any sandbox flag.
+- **`agents.config.yaml` policy section.** New knobs: `assume_host_access_false_unless_probed: true` (default-deny), `on_host_access_missing_for_required_role: escalate`, and `host_local_service_dependent_roles: [executor.commercial, kb_linter]`. `config_revision` bumped 2 → 3.
+- **`agents.config.yaml` adapter blocks.** All three adapters annotated with `host_access`: `claude-orchestrator` and `claude-native` get `{loopback_tcp: true, unix_sockets: true}` (host shell, no sandbox); `codex-bridge` gets `{loopback_tcp: false, unix_sockets: false}` until the bridge protocol exposes `capabilities --json` with the field.
+- **`SYSTEM-BLUEPRINT-v2.10.md`** — snapshot per CLAUDE.md "never delete old blueprint versions" invariant.
+
+### Why this is a minor bump (2.9 → 2.10), not a patch
+
+Same logic as v2.9: the adapter contract surface is meaningfully extended (one new REQUIRED probe field, one new `does NOT do` bullet, one new policy block). No existing behaviour silently changes for adopters; an adopter pinning `config_revision: ≤ 2` continues to operate but with no host-access guarantees, and the orchestrator emits a warning recommending the bump on next edit.
+
+### What v2.10 does NOT do
+
+- Does not introduce a new invariant. INVARIANTS 1–10 are unchanged. Host access is an adapter-contract field, not a system-wide property.
+- Does not change the iteration lifecycle, pipeline state machine, ledger schema, or any other §-section.
+- Does not modify any Layer-2 file beyond what Phase 3 (introduced in the same session) introduces. The host-access rule is layered into §25 only; Layer-2 invariants.md is untouched (no INVARIANT 11). Phase-3 role contracts (20-roles/) reference the new field where relevant.
+- Does not require any adopting project to re-implement the bridge today. Projects that pin `config_revision: ≤ 2` continue to operate; the orchestrator emits a one-time warning at session start and recommends bumping when `agents.config.yaml` is next edited.
+- Does not change the bridge contract — the bridge already requires the orchestrator to handle this; this release codifies the orchestrator's compliance.
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `SYSTEM-BLUEPRINT.md` | §25 probe row extended with `host_access`; new §25 subsection "Sandbox flags do not imply host-local service access"; new §25 "does NOT do" bullet; Version History row; front-matter Version 2.9 → 2.10 |
+| `SYSTEM-BLUEPRINT-v2.10.md` | NEW — snapshot |
+| `agents.config.yaml` | `config_revision` 2 → 3; new policy block (host_access default-deny + denied-roles); 3 adapter blocks annotated with `host_access` |
+| `pipeline/verification-ledger.jsonl` | 1 re-extraction audit row attributing the change to BRIDGE_REQUIREMENTS:165 |
+| `CHANGELOG.md` | this entry |
+
+### Unresolved items
+
+- A future bridge protocol bump SHOULD add `host_access` to the bridge's `capabilities --json` output. Until then `codex-bridge.host_access` in `agents.config.yaml` is a static-declaration placeholder (`false/false`) rather than a probed value.
+- `commands/_delegate.md` Step 2 (PROBE) and Step 4 (DISPATCH) should add a host_access compatibility check before invoking the adapter. Deferred to Phase 5 when commands are rewritten.
+- The orchestrator-degradation pattern (pre-inject query results / host-side wrapper) is described in prose; a templated wrapper script in `tools/host-shell-wrapper.sh` is a candidate for Phase 4.
+
+## v2.9 — 2026-05-04
+
+**Source**: User-driven directive during v3.0 Phase 2 dispatch. Trigger: the harness fact-forcing gate (gateguard skill) blocked a Bash/Edit call mid-dispatch; the user's response — *"my directives are to prevent such a condition from any project that inherits the orchestration from this build"* — promoted the gate's behaviour from a local hook configuration to a structural blueprint property. The condition the gate prevents (state-mutating tool calls without prior user-visible alignment between request and action) is the same failure mode INVARIANT 8 prevents for source-saving and INVARIANT 9 prevents for state writes — but at the per-tool-call granularity rather than per-iteration granularity.
+
+### Added
+
+- **`SYSTEM-BLUEPRINT.md` §2 — INVARIANT 10: Pre-action fact presentation.** Every state-mutating tool call (Bash, Edit, Write, MultiEdit, NotebookEdit, delegated dispatch, network POST/PUT/DELETE, MCP write tools) MUST be preceded by a user-visible statement of (a) the current request restated in one sentence, AND (b) what the action verifies/produces. CARVE-OUT for read-only tools (Read, Grep, Glob, Ls, WebFetch→sources/, WebSearch) and task-tracker operations. ENFORCEMENT: harness-enforced via PreToolUse hook; in Claude Code the gateguard skill provides this. PROPAGATION clause: any project loading `agents.config.yaml` inherits the gate.
+- **`SYSTEM-BLUEPRINT.md` §25 adapter contract.** New required field in adapter probe response: `enforces_pre_action_facts: bool | "orchestrator-side"`. Adapters reporting `false` may only fulfil read-only roles. The `"orchestrator-side"` tri-state value is for adapters (such as the MVP codex-bridge) that lack an in-process callback — the orchestrator emits the fact block on their behalf before each dispatch.
+- **`SYSTEM-BLUEPRINT.md` §25 "What this section does NOT do".** New bullet: this section does not exempt any agent from Invariant 10.
+- **`agents.config.yaml` policy section.** New knobs: `pre_action_fact_presentation_required: true` (default), `pre_action_fact_enforcement_mechanism: gateguard-skill`, `on_pre_action_fact_missing: reject`, plus a canonical `state_mutating_tools:` list. `config_revision` bumped 1 → 2; `last_updated` bumped to 2026-05-04.
+- **`agents.config.yaml` adapter blocks.** `claude-orchestrator`, `claude-native`, and `codex-bridge` annotated with `enforces_pre_action_facts` (true / true / orchestrator-side respectively) and `pre_action_fact_mechanism`.
+- **`SYSTEM-BLUEPRINT-v2.9.md`** — version snapshot per CLAUDE.md "never delete old blueprint versions" invariant.
+- **`00-overview/invariants.md`** — re-extracted to mirror the new INVARIANT 10. `max_lines` bumped 120 → 180 to accommodate the new invariant body. Re-extraction logged in `pipeline/verification-ledger.jsonl`.
+
+### Why this is a minor (2.x) bump, not a patch (2.x.y)
+
+INVARIANT 10 is architectural — it changes the adapter contract (probe response now has a required field), the orchestrator's dispatch-validation behaviour (config-load fails fast on a state-mutating role bound to a non-enforcing adapter), and the inheritance contract (every adopting project now gates state mutations). No existing behaviour silently changes — adopters that were not previously running gateguard see no breakage at adoption (default knob is `true`, but absence is treated as "unknown / warn" until config_revision ≥ 2 in their own file). But the surface is meaningfully extended; that is a minor bump.
+
+### What v2.9 does NOT do
+
+- Does not change any other invariant (1–9 unchanged).
+- Does not modify the iteration lifecycle or pipeline state machine.
+- Does not change the ledger schema.
+- Does not extract any further Phase-2 files (those resume after this version bump lands).
+- Does not require any adopting project to re-implement the gate today — projects that pin `config_revision: 1` continue to operate; the orchestrator emits a warning and recommends bumping when next edited.
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `SYSTEM-BLUEPRINT.md` | §2 INVARIANT 10 added; §25 adapter-contract row updated; §25 "does NOT do" bullet added; Version History row added; front-matter Version 2.8 → 2.9 |
+| `SYSTEM-BLUEPRINT-v2.9.md` | NEW — snapshot |
+| `agents.config.yaml` | `config_revision` 1 → 2; `last_updated` 2026-05-04; new policy knobs (Invariant 10); 3 adapter blocks annotated |
+| `00-overview/invariants.md` | INVARIANT 10 mirrored; frontmatter `version` 2.8 → 2.9; `extracted_from.source` → v2.9; `max_lines` 120 → 180 |
+| `pipeline/verification-ledger.jsonl` | 2 new entries (dispatch + consume for the invariants.md re-extraction) |
+| `CHANGELOG.md` | this entry |
+
+### Unresolved items (for v3.0 Phase 2 continuation)
+
+- 17 remaining Phase-2 file extractions resume now that the source is at v2.9 (sources to extract from will reference v2.9 going forward).
+- `commands/_delegate.md` step 8 (SCHEMA gate) should add an Invariant-10 sub-check: confirm the delegated agent's output execution-log shows pre-action fact presentation. Deferred to Phase 5 when commands are rewritten.
+- Adoption guides for v2.9 — adoption-guides/ remains empty per known gap; new guide entry "v2.9 INVARIANT 10 adoption" should describe the minimum viable enforcement mechanism per runtime (Claude Code: install gateguard; Claude Agent SDK: register PreToolUse callback; other CLIs: write a wrapper script).
+
+## v2.8.1 — 2026-05-04
+
+**Source**: Audit-driven stabilisation pass — Phase 0 of the v3.0 restructure approved by user (plan: `~/.claude/plans/crispy-sniffing-conway.md`). Triggered by `auditor-central/KB-Orchestrator/audit.md` findings #1, #3, #4, #5 (high+medium severity). No content rewrites; this release fixes drift and adds forward-pointing scaffolding before the larger restructure begins.
+
+### Fixed (audit finding #1)
+
+- **`commands/pre-check.md` line 55**: `pipeline_state: 'pre-checked'` → `'pre-check-complete'`. The canonical enum value was added in v2.5 (per CHANGELOG v2.5 row) but the slash-command file was never synced. Also added inline reference to Invariant 9 (orchestrator-only writes to pipeline_state).
+
+### Updated (audit findings #3, #4)
+
+- **`README.md`**: badge bumped from `v2.5` → `v2.8`; added `v3.0-in-migration` badge linking to CHANGELOG; added prominent v3.0 restructure note explaining the bundle-loading direction; "What's Included" tree updated to show `agents.config.yaml` and `commands/_delegate.md`; "What the blueprint covers" table extended with §25 row; Quick Start updated to show `agents.config.yaml` copy + the 10 (not 11) remaining commands.
+- **`SYSTEM-BLUEPRINT.md`**: front-matter `**Version**: 2.7` → `2.8` (the v2.8 row had been added to the Version History table without syncing the front-matter — drift fix). Added the v3.0 forward-pointing banner at the top per audit finding #4 ("the blueprint violates its own selective-retrieval philosophy"): banner explicitly tells agents this file is the canonical reference, not the runtime ingest entrypoint after Phase 4, and points at `INDEX.md` (forthcoming) as the new entry.
+
+### Added (audit finding #5)
+
+- **`80-status/shipped-vs-planned.md`** — first file of the v3.0 numbered-directory structure to land. Three-section capability-maturity registry: blueprint architecture (what's in the spec); repository assets (what's actually in the repo vs. planned); Codex bridge capabilities (mirrors BRIDGE_REQUIREMENTS implementation-status table — distinguishes MVP-shipped surface from planned surface that requires `capabilities --json` probe gating). Also tracks v3.0 restructure phase status (Phase 0 → in progress; Phases 1–6 → planned). Frontmatter follows the v3.0 standard (id/title/purpose/audience/status/version/last_reviewed/extracted_from/related/max_lines).
+- **`80-status/` directory** — created. First Layer-2 directory of the v3.0 structure.
+
+### What v2.8.1 does NOT do
+
+- Does not extract any blueprint section into Layer-2 files (that's Phases 2–4 of v3.0).
+- Does not write the missing 10 role-bearing slash commands (Phase 5).
+- Does not change the `_delegate.md` dispatch path to bundle-loading (Phase 5).
+- Does not invoke the Codex bridge (no extraction work yet).
+- Does not modify `agents.config.yaml` schema (still `schema_version: 1`; bumps to `2` in Phase 5).
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `commands/pre-check.md` | Drift fix: `pre-checked` → `pre-check-complete`; Invariant 9 reference added |
+| `README.md` | Version badge, restructure note, project tree, command status, sections table, Quick Start |
+| `SYSTEM-BLUEPRINT.md` | Front-matter version line synced to 2.8; v3.0 forward-pointing banner added |
+| `80-status/shipped-vs-planned.md` | **NEW** — capability-maturity registry |
+| `80-status/` | **NEW** directory — first Layer-2 home |
+| `CHANGELOG.md` | This entry |
+
+### Unresolved items (deferred to subsequent v3.0 phases)
+
+- All extraction work — see `~/.claude/plans/crispy-sniffing-conway.md` Phases 2–6.
+- Schema files under `templates/schemas/` referenced by `_delegate.md` step 8 (Phase 2).
+- A reference adapter implementation for `claude-native` and `codex-bridge` (carried from v2.8 unresolved).
+
+## v2.8 — 2026-05-03
+
+**Source**: User-driven architectural extension. Trigger: review of `../claude-codex-orchestration/BRIDGE_REQUIREMENTS.md` and the question "how can we enable our systems to take advantage of this orchestration?" The follow-up clarification — "Claude is both orchestrator AND a first-class executor; the architecture must be service-agnostic; a config file should declare role assignments" — drove the framing. This release codifies the protocol; it does not yet wire the eleven role-bearing slash commands (which remain on the gap list from v2.1).
+
+### New: Section 25 — External Agent Delegation Protocol
+
+The blueprint now defines a **service-agnostic protocol** for delegating any blueprint role (§6) to any agent runtime — additional Claude instances (workers via Task tool / Agent SDK), Codex (via codex-task-bridge), and any future agent (Mistral, Devstral, Cursor, MCP-exposed agents).
+
+**Three-layer architecture:**
+1. **Roles** (blueprint, §6) — semantic responsibilities. Stable. The blueprint never names a specific agent.
+2. **Agents** — concrete instances. Multiple agents can share an adapter with different config.
+3. **Adapters** — protocol drivers (`claude-orchestrator`, `claude-native`, `codex-bridge`; future: `openai-compat-http`, `cursor-cli`, `mcp-agent`). Adding a new agent type = adding one adapter block; existing agents and roles untouched.
+
+**Decoupling principle:** roles change rarely (blueprint truth), agents change as we discover better tools (operational truth), adapters change with transport (protocol truth). A new agent type requires no blueprint edit — only a new adapter and registry entries.
+
+**Claude is both orchestrator and first-class executor.** A common misreading is "Claude orchestrates, Codex executes." The accurate framing: `claude-main` is the orchestrator (singleton, non-delegable per Invariant 9). It dispatches role work to other Claude instances (`claude-worker-*`) for the same reason it dispatches to Codex — process/context isolation enforces Generator≠Evaluator (Invariant 1). Spawning a fresh Claude subagent is architecturally equivalent to spawning Codex; both are "delegate to a separate context." The orchestrator picks based on cost (§17), capability, and adversarial-diversity preference.
+
+### New: Invariant 9 — Orchestrator role is non-delegable
+
+The orchestrator role is exclusively `claude-main` and cannot be assigned to any other agent. The orchestrator owns, exclusively: PROGRESS.md writes and pipeline_state transitions, verification ledger writes, escalation.md authorship, dispatch decisions, and schema validation of every artifact consumed from a delegated agent. Why non-delegable: if any other agent could promote itself to orchestrator mid-pipeline, the trust model (§19) collapses — a delegated agent could approve its own output by writing PROGRESS.md, defeating Invariant 1. Scope: applies the moment `agents.config.yaml` exists; trivially satisfied for projects that have not yet adopted external-agent delegation.
+
+### New: §19 addendum — Trust level for delegated-agent output + verification ledger
+
+- Trust Levels table extended: any output from a delegated agent (Claude worker, Codex via bridge, future) is **Low trust — same as agent-written pipeline files**. The model family of the delegated agent does not affect trust level. Trust derives from the orchestrator's verification of the *output*, not from the identity of the *producer*.
+- **Authentication ≠ Verification** distinction made explicit. Both gates required on every consume. Authentication = "did this output come from the dispatch we made?" (job-id + content-hash check). Verification = "is the output correct, hallucinated, or reward-hacked?" (schema validation + reward-hacking checks + source re-check sample). Common failure mode: treating successful authentication as if it were verification. Both can fail independently; neither substitutes for the other.
+- **Verification ledger** at `pipeline/verification-ledger.jsonl` — append-only audit trail. Two entries per delegation: dispatch (records request) and consume (records verdicts). Field schema fully specified. Meta-review (§21) reads it to identify agents/roles with persistent rejection rates — informs reassignment decisions.
+
+### New: agents.config.yaml — the registry
+
+Project-root file declaring adapters, agents, role assignments, and validation policy. Editing this file is the supported way to swap agents, add new agents, or A/B test agent assignments — no blueprint edit required. Schema fully specified (`schema_version`, `config_revision`, `last_updated`, `adapters`, `agents`, `roles`, `validation`, `policy`). Default config wires Claude workers to most roles, Codex to truthsayer + evaluator (for adversarial-family diversity), and reserves `apply_meta` to claude-main by policy.
+
+### New: commands/_delegate.md — the dispatch shim
+
+Meta-command (not user-invokable) that role-bearing slash commands compose. Specifies the canonical eleven-step dispatch sequence: LOAD config → PROBE adapter → PREPARE prompt (with semantic isolation) → DISPATCH (write ledger entry) → AWAIT → FETCH → AUTH (gate 1: provenance) → SCHEMA (gate 2a: structural) → VERIFY (gate 2b: reward-hacking + source-recheck + role-specific) → CONSUME or REJECT (write ledger entry) → STATE (orchestrator-only PROGRESS.md update). The shim is the single, identical dispatch path for every role; role-bearing commands stay clean of agent-specific plumbing.
+
+### Changes to existing sections
+
+- **Table of Contents**: added entry 25.
+- **Quick Reference Card**: added DELEGATION and VERIFY GATE summary lines.
+
+### Bridge adapter — Codex specifics
+
+Section 25 includes a Codex-specific subsection covering: the bootstrap rule (probe `version` first, treat non-responsive as protocol 1, gate non-MVP surface behind `capabilities --json`); mode mapping (`design` for read-only roles, `implement` for workspace-write roles, `review` preferred for `codex-eval` once protocol ≥ 2); sandbox precedence (per BRIDGE_REQUIREMENTS); artifact mapping (bridge `last_message.txt` → blueprint `iterations/current/<role-output>.md` after schema validation); and the Invariant-9 boundary (pipeline state stays in PROGRESS.md, never delegated to bridge job state).
+
+### What v2.8 does NOT do
+
+- Does not change the role taxonomy of §6.
+- Does not relax §19's trust model — delegated-agent output is Low trust regardless of agent identity.
+- Does not introduce a new state machine — the pipeline state machine (§7) is unchanged; delegation is invisible to the iteration lifecycle.
+- Does not authorise any agent except claude-main to write PROGRESS.md, the verification ledger, escalation.md, or to make pipeline state transitions.
+- Does not write the eleven outstanding role-bearing slash commands. They remain a tracked gap (CHANGELOG v2.1 unresolved items, project CLAUDE.md "Honest completeness state"). When written, they will compose `/_delegate` per the per-role wiring table in `commands/_delegate.md`.
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `SYSTEM-BLUEPRINT.md` | Added INVARIANT 9 (§2); §19 addendum (delegated-output trust + verification ledger); §25 (External Agent Delegation Protocol); TOC entry 25; Quick Reference Card additions; Version History row |
+| `agents.config.yaml` | **NEW** — agent registry, role assignments, validation policy |
+| `commands/_delegate.md` | **NEW** — orchestrator dispatch shim spec |
+| `CHANGELOG.md` | This entry |
+
+### Unresolved items (deferred to v2.9 or follow-up sprints)
+
+- Eleven role-bearing slash commands (`plan`, `audit`, `execute`, `evaluate`, `kb-lint`, `wiki-ingest`, `wiki-query`, `escalate`, `meta-review`, `apply-meta`, `onboard`) still need to be written and retrofitted to compose `/_delegate`. Currently only `pre-check.md` exists.
+- Schema files under `templates/schemas/` referenced by step 8 of the dispatch shim — to be populated as the role-bearing commands are written.
+- A reference adapter implementation for `claude-native` (Task tool wrapper) — currently described in the spec but not implemented as code; the orchestrator follows the spec inline.
+- A reference adapter implementation for `codex-bridge` — currently described in the spec; the orchestrator will shell out per the BRIDGE_REQUIREMENTS canonical CLI emission order.
+- A/B audit lane: planned one-iteration trial of `/audit` inline (Claude) vs. delegated (Codex) to populate `audits/` with first comparative data on agent assignment quality.
+
+## v2.7 — 2026-04-11
+
+**Source**: Deep research pass across LLM wiki/KB implementations — GitHub repos, academic papers (WikiCollide, RefChecker, Practical GraphRAG), production case studies, and community implementations. 14 source files saved to `research/sources/`. Full findings report: `research/sources/findings-llm-wiki-deep-research-2026-04-11.md`.
+
+### New: Five wiki-specific failure modes (Section 11)
+
+Named and documented five failure modes distinct from general LLM hallucination — these are structural risks of the wiki architecture itself:
+
+1. **Error compounding** — the wiki-unique risk. Wiki errors persist and self-reinforce through query-compounding. A subtle mistake in one page gets cited by a query answer, which gets filed back, creating two pages reinforcing the same error. Detection: trace provenance; flag wiki-citing-wiki chains with no source backing. New lint rule #10 added to KB Linter.
+
+2. **Claim drift** — paraphrase loses precision over compilation rounds. Detection: embed compiled claim and source passage; flag cosine similarity drop below 0.85.
+
+3. **False consolidation** — LLM merges similar-but-distinct entities into one page. Detection: incompatible attributes from different sources on same entity page.
+
+4. **Citation rot** — source URL changes content or disappears. Detection: periodic re-fetch + diff. New lint rule #9 (citation health check) added.
+
+5. **Confidence inflation** — hedging language lost during compilation. Detection: compare source hedging ("reportedly", "approximately") against definitive wiki claims.
+
+### New: O(N*k) NLI contradiction scan (Section 6, lint rule #1)
+
+Replaced the implicit O(N^2) pairwise contradiction scan with an O(N*k) NLI pipeline validated by WikiCollide (arXiv:2509.23233). Pipeline: extract claims as knowledge triplets → embed → retrieve top-k similar triplets from other pages → NLI classify pairs. Key metrics from WikiCollide: ~3.3% of facts are internally inconsistent at baseline; domain variation up to 17.7% for narrative content; automated detection ceiling ~75% AUROC — manual review at meta-review cadence remains necessary. This also resolves the "Concurrency model" and "KB drift detection at scale" items from v2.1 unresolved items.
+
+### New: Typed relationships in wiki frontmatter (Section 11)
+
+Added `relationships:` field with typed directional links: `uses`, `depends-on`, `contradicts`, `supersedes`, `caused`, `fixed`. Enables structural queries that untyped backlinks cannot: "what downstream pages affected if source X retracted?" (traverse depends-on), "unresolved contradictions?" (scan contradicts edges). KB Linter validates that `contradicts` relationships have corresponding entries in `wiki/synthesis/contradictions/`. Source: rohitg00 LLM Wiki v2, Microsoft GraphRAG.
+
+**Budget extraction path**: SpaCy dependency parsing achieves 94% of LLM extraction quality for relationship types (arXiv:2507.03226). Pipeline: passive voice normalization → phrasal merging → coreference resolution → dependency triple extraction. Use LLM for frontier ingest; SpaCy for batch maintenance.
+
+### New: Concrete scale thresholds (Sections 10, 20)
+
+Replaced "moderate scale" with validated numeric breakpoints:
+- <200 wiki pages: `wiki/index.md` only (Tier 1 always-loaded)
+- 200-500 pages: Hybrid — index.md + BM25/vector retrieval (wiki-recall: 93% recall vs 60% wiki-only)
+- \>500 pages: Full BM25 + vector + LLM reranker (qmd MCP)
+
+Activation criteria for wiki/entities/ embeddings: `wiki/index.md` exceeds 150 lines (75% cap) AND agents need cross-entity semantic matching.
+
+Section 20 updated with wiki-recall quantified performance: 98.4% token reduction, ~550 token wake-up cost, validated to 1,000 entities.
+
+### New: Archive-on-ingest protocol (Section 14)
+
+Following Wikipedia's own archival policy ("always archive web sources at time of citation"), added archive-on-ingest to the INVARIANT 8 sequence: SAVE → **ARCHIVE** → READ → EXTRACT → WRITE CLAIM. Protocol: submit URL to Wayback Machine Save API after source save; record `archive_url` + `archived_at` in source frontmatter. Archival failure is logged but non-blocking.
+
+WebFetch file format updated with `archive_url` and `archived_at` fields.
+
+Self-hosted alternative documented: ArchiveBox for compliance-grade local archival.
+
+Optional hash-chain audit log documented: `prev_hash` field on pipeline.log.jsonl entries for tamper-evident provenance. 3.4ms/step overhead (AuditableLLM, MDPI 2026). EU AI Act / GDPR aligned.
+
+### New: Wiki concurrency protocol (Section 11)
+
+Added page-level optimistic locking protocol: `version_hash` (SHA-256 first 8 chars) in wiki page frontmatter. Read → modify → verify hash unchanged → write (or re-read and retry on mismatch). CRDTs explicitly not recommended for Markdown (Peritext, Ink & Switch). Append-only files (log.md, pipeline.log.jsonl) exempt from locking.
+
+Source: tick-md file locking system, Anthropic multi-agent coordination patterns blog.
+
+### Extended: KB Linter (Section 6)
+
+Two new mandatory lint rules:
+- **Rule #9 — Citation health check**: Re-fetch URLs in `source_urls` for pages modified in last 10 iterations. Flag 404/403 as `CITATION-ROT`, content change >30% as `SOURCE-CHANGED`.
+- **Rule #10 — Error compounding check**: Trace provenance of `CROSS-VERIFIED`/`CONFIRMED` claims. If all evidence is wiki-citing-wiki with no independent `sources/` backing, downgrade to `SINGLE-SOURCE`.
+
+### Updated: Quick Reference Card
+
+Added: wiki failure modes (5), typed relationships, contradiction scan algorithm, concurrency protocol, archive-on-ingest, lint rules count (8→10), scale thresholds.
+
+---
+
 ## v2.5 — 2026-04-07
 
 **Source**: Adopted project sprint-001 run. 7 suggestions filed and tracked in `suggestions/pending.md`.

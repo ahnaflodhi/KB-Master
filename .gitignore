@@ -1,0 +1,11 @@
+# Playwright MCP runtime cache (browser snapshots, console logs, traces)
+.playwright-mcp/
+
+# Claude Code per-user settings (machine-local; do not share)
+.claude/settings.local.json
+
+# OS / editor noise
+.DS_Store
+*.swp
+*.swo
+*~

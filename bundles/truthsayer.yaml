@@ -1,0 +1,23 @@
+bundle: truthsayer
+version: 1
+# Per bundles/_README.md target: ~3,800 tokens. Adversarial role — needs full quality criteria + failure modes.
+loads:
+  - 00-overview/invariants.md
+  - 00-overview/glossary.md
+  - 10-pipeline/state-machine.md
+  - 10-pipeline/file-contracts.md
+  - 10-pipeline/iteration-lifecycle.md
+  - 20-roles/truthsayer.md
+  - 60-schemas/spec.md
+  - 60-schemas/audit-report.md
+  - 60-schemas/quality-criteria.md
+  - 30-knowledge/wiki-failure-modes.md   # what kinds of weakness to look for
+optional:
+  - 80-status/shipped-vs-planned.md
+adapter_specific:
+  codex-bridge:
+    - 50-adapters/codex-bridge.md
+  claude-native:
+    - 50-adapters/claude-native.md
+estimated_tokens: ~3800
+loadable_by_protocol: 1

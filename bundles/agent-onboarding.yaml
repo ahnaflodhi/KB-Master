@@ -1,0 +1,44 @@
+bundle: agent-onboarding
+version: 1
+# Per bundles/_README.md target: ~7,000 tokens. Largest bundle by design — for a new adapter
+# implementer (e.g. openai-compat-http for Mistral/Devstral, cursor-cli, mcp-agent).
+# Loaded ONCE during onboarding, not per-dispatch.
+loads:
+  # Foundation
+  - 00-overview/_README.md
+  - 00-overview/invariants.md
+  - 00-overview/glossary.md
+  - 00-overview/system-map.md
+  - 00-overview/design-principles.md
+  - 00-overview/philosophy.md
+  # Pipeline
+  - 10-pipeline/state-machine.md
+  - 10-pipeline/file-contracts.md
+  - 10-pipeline/iteration-lifecycle.md
+  - 10-pipeline/quality-gates.md
+  - 10-pipeline/escalation-rules.md
+  # Role index (READMEs only — full role contracts loaded per bundle when bound)
+  - 20-roles/_README.md
+  - 20-roles/orchestrator.md           # the keystone Inv-9 role new adapters must respect
+  # Runtime semantics — the contract a new adapter implements
+  - 40-runtime/_README.md
+  - 40-runtime/dispatch-shim.md
+  - 40-runtime/verification-ledger.md
+  - 40-runtime/bootstrap-and-degradation.md
+  - 40-runtime/harness-decay.md
+  # Adapter contracts — examples to model the new adapter on
+  - 50-adapters/_README.md
+  - 50-adapters/capability-matrix.md
+  - 50-adapters/claude-orchestrator.md
+  - 50-adapters/claude-native.md
+  - 50-adapters/codex-bridge.md
+  # Schema index — every output schema the new adapter's roles will produce
+  - 60-schemas/_README.md
+  - 60-schemas/verification-ledger.jsonl.md
+  - 60-schemas/escalation.md
+optional:
+  - 80-status/shipped-vs-planned.md
+  - 30-knowledge/_README.md
+adapter_specific: {}
+estimated_tokens: ~7000
+loadable_by_protocol: 1

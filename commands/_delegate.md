@@ -69,7 +69,13 @@ orchestrator's context; step 11 mutates pipeline state.
   - For `claude-native`: confirm Task tool or Agent SDK availability.
   - For `codex-bridge`: run `<binary_path> version`; if exit 0 with integer N, set `protocol = N`; else `protocol = 1`. If protocol ≥ 2, also run `<binary_path> capabilities --json` and parse the supported surface.
   - For other adapters: run their declared `bootstrap_probe`.
-- Cache the probe result.
+- Cache the probe result. Probe response includes (per `50-adapters/capability-matrix.md`): `available`, `protocol`, `capabilities[]`, `enforces_pre_action_facts: bool|"orchestrator-side"`, `host_access: {loopback_tcp: bool, unix_sockets: bool}`.
+- **v2.9 enforces_pre_action_facts check** (Invariant 10): if `enforces_pre_action_facts == false` AND the role is state-mutating (every role except read-only `wiki_query`, `meta_review`, `truthsayer`, `pre_check`, `evaluator`, `planner`), refuse with `error: pre-action-fact-enforcement-missing`. Adapters reporting `false` may only fulfil read-only roles. Tri-state `"orchestrator-side"` is acceptable — the orchestrator emits the §25-mandated 4-fact block on the adapter's behalf before each dispatch.
+- **v2.10 host_access compatibility check**: if the role is in `policy.host_local_service_dependent_roles` (default: `[executor.commercial, kb_linter]`), AND any required `host_access` subfield (`loopback_tcp` and/or `unix_sockets`) is `false` for the resolved adapter — apply `policy.on_host_access_missing_for_required_role`:
+  1. **`escalate`** (default, fail-loud): write `iterations/current/escalation.md` with reason `host-access-required-but-not-advertised: role=<role> adapter=<adapter> required=<subfield>` and stop the pipeline.
+  2. **`reroute`**: iterate the role's `roles.<role>.fallback_adapters` list (if defined) for an adapter advertising the required `host_access`. If none found, escalate per (1).
+  3. **`inline`** (orchestrator host-side wrapper degradation): the orchestrator (`claude-orchestrator`, full host access) runs the host call itself outside the delegated job, captures the output, and re-dispatches the role with the captured output pre-injected as read-only evidence in `inputs[]`. The consume ledger row records `host_access_degradation: orchestrator-inlined`.
+- Default-deny: if the probe response omits `host_access` entirely or omits a subfield, the orchestrator MUST treat the missing subfield as `false` (per `policy.assume_host_access_false_unless_probed: true`).
 - If adapter is unavailable:
   - Apply graceful-degradation chain (§25 Bootstrap):
     1. Try equivalent supported path on same adapter (e.g. bridge `raw -- ...` if `--mode review` unavailable but `raw` exists).

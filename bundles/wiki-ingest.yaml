@@ -1,0 +1,20 @@
+bundle: wiki-ingest
+version: 1
+# Per bundles/_README.md target: ~4,600 tokens. Wiki Ingester needs full archive-on-ingest + claim-promotion rules.
+loads:
+  - 00-overview/invariants.md
+  - 00-overview/glossary.md
+  - 10-pipeline/iteration-lifecycle.md
+  - 20-roles/wiki-ingester.md
+  - 30-knowledge/_README.md
+  - 30-knowledge/wiki-architecture.md
+  - 30-knowledge/temporal-facts.md
+  - 30-knowledge/wiki-failure-modes.md
+optional:
+  - 30-knowledge/three-tier-memory.md
+  - 80-status/shipped-vs-planned.md
+adapter_specific:
+  claude-native:
+    - 50-adapters/claude-native.md
+estimated_tokens: ~4600
+loadable_by_protocol: 1

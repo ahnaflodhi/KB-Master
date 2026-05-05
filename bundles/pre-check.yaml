@@ -1,0 +1,20 @@
+bundle: pre-check
+version: 1
+# Per bundles/_README.md target: ~2,400 tokens. Mirror of commands/pre-check.md inputs.
+loads:
+  - 00-overview/invariants.md
+  - 00-overview/glossary.md
+  - 10-pipeline/state-machine.md
+  - 10-pipeline/iteration-lifecycle.md
+  - 20-roles/pre-check.md
+  - 60-schemas/spec.md
+  - 60-schemas/audit-report.md
+  - 60-schemas/acceptance-checklist.md
+  - 60-schemas/quality-criteria.md
+optional:
+  - 80-status/shipped-vs-planned.md
+adapter_specific:
+  claude-native:
+    - 50-adapters/claude-native.md
+estimated_tokens: ~2400
+loadable_by_protocol: 1

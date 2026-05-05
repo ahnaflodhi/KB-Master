@@ -1,0 +1,29 @@
+bundle: executor-research
+version: 1
+# Per bundles/_README.md target: ~5,400 tokens. Research executor needs wiki + sources discipline.
+loads:
+  - 00-overview/invariants.md
+  - 00-overview/glossary.md
+  - 10-pipeline/state-machine.md
+  - 10-pipeline/file-contracts.md
+  - 10-pipeline/iteration-lifecycle.md
+  - 10-pipeline/quality-gates.md
+  - 20-roles/executor.md
+  - 60-schemas/contract.md
+  - 60-schemas/acceptance-checklist.md
+  - 60-schemas/execution-log.md
+  - 60-schemas/spec.md
+  # Research-specific knowledge
+  - 30-knowledge/wiki-architecture.md
+  - 30-knowledge/temporal-facts.md
+  - 30-knowledge/three-tier-memory.md
+optional:
+  - 30-knowledge/wiki-failure-modes.md
+  - 80-status/shipped-vs-planned.md
+adapter_specific:
+  claude-native:
+    - 50-adapters/claude-native.md
+  codex-bridge:
+    - 50-adapters/codex-bridge.md
+estimated_tokens: ~5400
+loadable_by_protocol: 1

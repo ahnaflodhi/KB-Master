@@ -1,0 +1,17 @@
+bundle: wiki-query
+version: 1
+# Per bundles/_README.md target: ~3,400 tokens. The Querier IS the Tier-2 loader; its own bundle is small.
+loads:
+  - 00-overview/invariants.md
+  - 00-overview/glossary.md
+  - 20-roles/wiki-querier.md
+  - 30-knowledge/three-tier-memory.md
+  - 30-knowledge/wiki-architecture.md
+optional:
+  - 30-knowledge/wiki-failure-modes.md
+  - 80-status/shipped-vs-planned.md
+adapter_specific:
+  claude-native:
+    - 50-adapters/claude-native.md
+estimated_tokens: ~3400
+loadable_by_protocol: 1

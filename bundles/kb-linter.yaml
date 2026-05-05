@@ -1,0 +1,26 @@
+bundle: kb-linter
+version: 1
+# Per bundles/_README.md target: ~5,000 tokens. Largest non-executor bundle —
+# 10 lint rules + temporal-fact protocol + 5 wiki failure modes.
+loads:
+  - 00-overview/invariants.md
+  - 00-overview/glossary.md
+  - 10-pipeline/state-machine.md
+  - 10-pipeline/iteration-lifecycle.md
+  - 10-pipeline/quality-gates.md       # G9 (10 lint rules)
+  - 20-roles/kb-linter.md
+  - 60-schemas/iter-summary.md
+  - 60-schemas/eval-report.md
+  # Knowledge artifacts the Linter mutates
+  - 30-knowledge/_README.md
+  - 30-knowledge/wiki-architecture.md
+  - 30-knowledge/knowledge-base.md
+  - 30-knowledge/temporal-facts.md
+  - 30-knowledge/wiki-failure-modes.md
+optional:
+  - 80-status/shipped-vs-planned.md
+adapter_specific:
+  claude-native:
+    - 50-adapters/claude-native.md
+estimated_tokens: ~5000
+loadable_by_protocol: 1

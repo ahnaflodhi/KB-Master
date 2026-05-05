@@ -1,0 +1,19 @@
+bundle: meta-review
+version: 1
+# Per bundles/_README.md target: ~3,000 tokens. Meta-Review reads ledger + harness-decay + invariants.
+loads:
+  - 00-overview/invariants.md
+  - 00-overview/glossary.md
+  - 00-overview/design-principles.md
+  - 20-roles/meta-review.md
+  - 40-runtime/harness-decay.md
+  - 40-runtime/verification-ledger.md
+  - 60-schemas/verification-ledger.jsonl.md
+  - 60-schemas/iter-summary.md
+optional:
+  - 80-status/shipped-vs-planned.md
+adapter_specific:
+  claude-native:
+    - 50-adapters/claude-native.md
+estimated_tokens: ~3000
+loadable_by_protocol: 1

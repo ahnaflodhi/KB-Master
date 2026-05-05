@@ -1,0 +1,26 @@
+bundle: evaluator
+version: 1
+# Per bundles/_README.md target: ~4,800 tokens. Evaluator runs reward-hacking + verification gates.
+loads:
+  - 00-overview/invariants.md
+  - 00-overview/glossary.md
+  - 10-pipeline/state-machine.md
+  - 10-pipeline/file-contracts.md
+  - 10-pipeline/iteration-lifecycle.md
+  - 10-pipeline/quality-gates.md      # G7 (§18 reward-hacking), G8, G6
+  - 20-roles/evaluator.md
+  - 60-schemas/contract.md
+  - 60-schemas/acceptance-checklist.md
+  - 60-schemas/execution-log.md
+  - 60-schemas/eval-report.md
+  - 60-schemas/quality-criteria.md
+optional:
+  - 80-status/shipped-vs-planned.md
+  - 50-adapters/capability-matrix.md   # v2.10 host_access matters for commercial eval
+adapter_specific:
+  codex-bridge:
+    - 50-adapters/codex-bridge.md
+  claude-native:
+    - 50-adapters/claude-native.md
+estimated_tokens: ~4800
+loadable_by_protocol: 1

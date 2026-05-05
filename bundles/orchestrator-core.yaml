@@ -1,0 +1,40 @@
+bundle: orchestrator-core
+version: 1
+# Loaded by claude-main at session start. Replaces "read SYSTEM-BLUEPRINT.md" entirely.
+# Per bundles/_README.md target: ~6,500 tokens. Largest non-onboarding bundle by design —
+# the orchestrator dispatches every role and must understand every contract.
+loads:
+  # Always-loaded foundation
+  - 00-overview/_README.md
+  - 00-overview/invariants.md
+  - 00-overview/glossary.md
+  - 00-overview/system-map.md
+  - 00-overview/design-principles.md
+  - 00-overview/philosophy.md
+  # Pipeline mechanics the orchestrator owns
+  - 10-pipeline/state-machine.md
+  - 10-pipeline/file-contracts.md
+  - 10-pipeline/iteration-lifecycle.md
+  - 10-pipeline/quality-gates.md
+  - 10-pipeline/escalation-rules.md
+  # Orchestrator role contract + adapter contracts (the orchestrator dispatches all)
+  - 20-roles/orchestrator.md
+  - 50-adapters/_README.md
+  - 50-adapters/capability-matrix.md
+  - 50-adapters/claude-orchestrator.md
+  # Runtime semantics
+  - 40-runtime/_README.md
+  - 40-runtime/dispatch-shim.md
+  - 40-runtime/verification-ledger.md
+  - 40-runtime/bootstrap-and-degradation.md
+  - 40-runtime/claude-code-integration.md
+  # Verification ledger schema
+  - 60-schemas/verification-ledger.jsonl.md
+  - 60-schemas/escalation.md
+optional:
+  - 80-status/shipped-vs-planned.md
+adapter_specific:
+  claude-orchestrator:
+    - 40-runtime/claude-code-integration.md
+estimated_tokens: ~6500
+loadable_by_protocol: 1

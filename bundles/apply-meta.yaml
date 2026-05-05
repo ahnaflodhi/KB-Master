@@ -1,0 +1,18 @@
+bundle: apply-meta
+version: 1
+# Per bundles/_README.md target: ~3,200 tokens. Apply-Meta is orchestrator-inline (Inv 9).
+# Mutates agents.config.yaml + commands/_archived/ + Layer-2 frontmatter status fields.
+loads:
+  - 00-overview/invariants.md         # Inv 9 (non-delegable orchestrator) + Inv 10 (gateguard on the mutations)
+  - 00-overview/glossary.md
+  - 20-roles/apply-meta.md
+  - 40-runtime/harness-decay.md       # the verdict semantics being enacted
+  - 40-runtime/verification-ledger.md  # for the apply-meta audit row
+optional:
+  - 80-status/shipped-vs-planned.md
+  - 50-adapters/capability-matrix.md
+adapter_specific:
+  claude-orchestrator:
+    - 50-adapters/claude-orchestrator.md
+estimated_tokens: ~3200
+loadable_by_protocol: 1

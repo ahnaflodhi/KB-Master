@@ -1,0 +1,25 @@
+bundle: executor-commercial
+version: 1
+# Per bundles/_README.md target: ~4,200 tokens. Commercial executor — needs 2a/2b gate detail + v2.10 host_access posture.
+loads:
+  - 00-overview/invariants.md
+  - 00-overview/glossary.md
+  - 10-pipeline/state-machine.md
+  - 10-pipeline/file-contracts.md
+  - 10-pipeline/iteration-lifecycle.md
+  - 10-pipeline/quality-gates.md
+  - 20-roles/executor.md
+  - 60-schemas/contract.md
+  - 60-schemas/acceptance-checklist.md
+  - 60-schemas/execution-log.md
+  - 60-schemas/spec.md
+  # v2.10 host_access policy is critical for commercial — it determines adapter eligibility
+  - 50-adapters/capability-matrix.md
+optional:
+  - 80-status/shipped-vs-planned.md
+adapter_specific:
+  claude-native:
+    - 50-adapters/claude-native.md
+  # codex-bridge denied for executor.commercial until host_access true/true (v2.10)
+estimated_tokens: ~4200
+loadable_by_protocol: 1

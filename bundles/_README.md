@@ -77,7 +77,7 @@ Per the approved plan §"The 13 bundles to ship". Manifest files land in Phase 5
 
 ## Drift detection
 
-`tools/build-bundle.sh --check` answers: "does each committed `<role>.yaml` match what the frontmatter-derivation rule would produce today?" CI runs this on every PR (Phase 6 onward). When drift is detected:
+`tools/build-bundle.sh --check` enforces referential integrity (Phase 6a): every path in `loads:`/`optional:`/`adapter_specific:` exists, and every non-universal `loads:` file declares the consuming role in its frontmatter `audience` or `also_needed_by`. CI runs this on every push to `main` and every pull request via `.github/workflows/ci.yml`. Byte-equivalent deterministic regeneration ("does the committed manifest match what the frontmatter-derivation rule would produce today?") is a future enhancement — `tools/build-bundle.sh <role>` emits a CANDIDATE manifest to stdout for human comparison until then. When drift is detected:
 
 1. Re-run `tools/build-bundle.sh <role>` to regenerate the manifest.
 2. Diff the regenerated file against the committed one.

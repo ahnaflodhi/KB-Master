@@ -2,7 +2,7 @@
 id: 60-schemas/audit-report
 title: audit-report.md schema
 purpose: schema
-audience: [truthsayer, planner, executor, evaluator]
+audience: [truthsayer, planner, executor, evaluator, pre_check]
 status: stable
 version: 2.9
 last_reviewed: 2026-05-04

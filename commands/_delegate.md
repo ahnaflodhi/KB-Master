@@ -95,6 +95,7 @@ orchestrator's context; step 11 mutates pipeline state.
 
 ### Step 4 — DISPATCH
 
+- **Pre-dispatch host_access re-check** (v2.10 defense-in-depth). The Step 2 host_access gate runs against the cached probe response, but the cache can be stale (probe ran early in the session; adapter restarted; `sandbox_override` was applied in Step 3 and may have downgraded effective capability). Before invoking the adapter, re-evaluate `policy.host_local_service_dependent_roles` against the resolved `(adapter, effective_sandbox)` pair using the same default-deny rule. On miss: do not dispatch — re-route via `policy.on_host_access_missing_for_required_role` (escalate / reroute / inline) per Step 2. Skipping this re-check is the failure mode v2.10 codified the rule against.
 - Invoke `adapter.dispatch(role, prompt, sandbox, model, inputs, expected_schema)`.
   - For `claude-native`/`subagent`: invoke the Task tool with `subagent_type` mapped from `agent_spec.system_role_hint` and the prompt.
   - For `claude-native`/`sdk`: spawn the Claude Agent SDK process with the configured model and prompt.
@@ -132,6 +133,7 @@ orchestrator's context; step 11 mutates pipeline state.
   - Schemas live in `60-schemas/<schema_name>.md` (Layer-2 directory introduced in v3.0 Phase 2 — see `00-overview/_README.md` for frontmatter spec; `60-schemas/_README.md` for schema-file conventions). Pre-v3.0, the empty `templates/schemas/` directory was the documented location; Phase 2 retires that path.
   - At minimum: required headers present, required field values match enum where applicable.
   - Apply semantic-isolation rule to extracted field values (§19).
+- **INVARIANT 10 sub-check** (v2.9 carry-forward — see `60-schemas/execution-log.md` "Pre-action fact presentation"). When the artifact bundle includes `iterations/current/execution-log.md` AND the dispatched adapter's `enforces_pre_action_facts != true` (i.e., `false` is rejected at Step 2 already; `"orchestrator-side"` is the case this sub-check polices), confirm every non-read-only tool invocation in the log is preceded by a fact block matching the §25 four-fact format (request restated; what verifies/produces; impacted files; user instruction quoted). Read-only invocations (Read/Grep/Glob/WebFetch/WebSearch) and task-tracker calls are exempt per INVARIANT 10's CARVE-OUT. Missing or malformed fact block on a state-mutating invocation: `schema_verdict = FAIL` with subtype `inv10-fact-missing`. The check is a regex scan over the log; deeper semantic verification of fact-block content is out of scope here and lives in the Evaluator's reward-hacking pass (Step 9).
 - If any required header missing or required enum value out of range: `schema_verdict = FAIL`. Skip to step 10 with verdict `rejected-schema`.
 - Else: `schema_verdict = PASS`.
 

@@ -1,0 +1,27 @@
+name: kb-orchestrator-core CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    name: Verify frontmatter, cross-refs, bundles
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Make tools executable
+        run: chmod +x tools/*.sh
+
+      - name: Verify frontmatter (strict — required keys + max_lines)
+        run: tools/verify-frontmatter.sh --strict
+
+      - name: Verify cross-references between Layer-2 files
+        run: tools/verify-cross-refs.sh
+
+      - name: Verify bundle manifests (referential integrity)
+        run: tools/build-bundle.sh --check

@@ -11,6 +11,7 @@ also_needed_by:
   - apply_meta
   - planner
   - truthsayer
+  - executor
 status: stable
 version: 2.10
 last_reviewed: 2026-05-04

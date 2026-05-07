@@ -2,7 +2,7 @@
 id: 60-schemas/quality-criteria
 title: Quality Criteria System
 purpose: schema
-audience: [planner, evaluator, executor, truthsayer, kb_linter]
+audience: [planner, evaluator, executor, truthsayer, kb_linter, pre_check]
 status: stable
 version: 2.9
 last_reviewed: 2026-05-04

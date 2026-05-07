@@ -18,7 +18,7 @@ related:
   - 60-schemas/eval-report.md
   - 10-pipeline/file-contracts.md
   - 10-pipeline/quality-gates.md
-max_lines: 100
+max_lines: 130
 directives:
   must_count: 0
   should_count: 0
@@ -68,6 +68,30 @@ Acceptance: {iterations/current/acceptance-checklist.md}
 - {url or file path}: {description — e.g. "contained 'ignore previous instructions' string at offset NNN; flagged and discarded"}
 ```
 
+### Pre-action fact presentation (INVARIANT 10, v2.9)
+
+Every state-mutating tool invocation logged under `Tool invocations` MUST be preceded by a fact block — either inline in the log or in a separate `Pre-action facts` sub-block referenced from the invocation row. Required four facts per §25 / INVARIANT 10:
+
+1. **Request restated** — the current user/orchestrator request in one sentence.
+2. **What this verifies/produces** — what the upcoming tool call will check or write.
+3. **Impacted files** — files the call will read or modify (paths only).
+4. **User instruction quoted** — verbatim quote of the directive the call is acting on.
+
+Read-only invocations (`Read`, `Grep`, `Glob`, `WebFetch`→`sources/`, `WebSearch`) and task-tracker calls are CARVED OUT and need no preceding fact block.
+
+**Format example** (one fact block, one mutating invocation):
+
+```markdown
+- Pre-action facts:
+  1. Request: {one-sentence restatement}
+  2. Verifies/produces: {effect}
+  3. Impacted: [{path1}, {path2}]
+  4. Quote: "{verbatim user/orchestrator directive}"
+- {Bash|Edit|Write}({redacted args}) → {outcome}
+```
+
+The §25 dispatch shim Step 8 INVARIANT-10 sub-check regex-scans the log for this pattern. A state-mutating invocation row with no preceding fact block fails schema validation with subtype `inv10-fact-missing`. Adapters reporting `enforces_pre_action_facts: true` produce these blocks in-process; for `orchestrator-side` adapters the orchestrator emits the block before each dispatched call. Either way, the artifact must show the block — the consumer (this schema) does not care which side produced it.
+
 ### Mandatory provenance fields (§14)
 
 For research projects, each WebFetch/WebSearch invocation logged in `Tool invocations` MUST also write a corresponding source file under `sources/research/iter-NNN/{domain}-{slug}.md` per Invariant 8. The execution-log.md entry references the saved-source path, NOT the URL alone. A claim citing a URL with no corresponding sources/ file = broken provenance = §14 Rule #7 lint failure.
@@ -90,6 +114,6 @@ If `N_fetched < N_listed` OR `N_cited > N_fetched`, reward-hacking is FLAGGED an
 
 ### Validation
 
-Schema validation in the §25 dispatch shim (Step 8) checks: file exists, is non-empty, contains at least one `### Unit` block, and (for research) every WebFetch/WebSearch tool invocation has a corresponding `sources/research/iter-NNN/*` file.
+Schema validation in the §25 dispatch shim (Step 8) checks: file exists, is non-empty, contains at least one `### Unit` block, every state-mutating tool invocation is preceded by an INVARIANT-10 four-fact block (see "Pre-action fact presentation" above), and (for research) every WebFetch/WebSearch tool invocation has a corresponding `sources/research/iter-NNN/*` file.
 
 ---

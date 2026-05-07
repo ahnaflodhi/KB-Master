@@ -1,5 +1,66 @@
 # Changelog — SYSTEM-BLUEPRINT.md
 
+## Phase 6a (v3.0) — 2026-05-07
+
+**Source**: User-driven directive — *"fold in the carry-forward items"* — folding the v2.9 and v2.10 unresolved-items list into v3.0 Phase 6 alongside the planned bundle generation tooling and CI drift gate. No SYSTEM-BLUEPRINT.md content/version bump (`commands/_delegate.md` is the operationalisation layer; the blueprint already promises the gates this release implements). Phase 6 is now split into 6a (this release: tooling + carry-forward closures) and 6b (planned: monolith demotion + 5-day soak).
+
+### Added — Tooling (Phase 6 primary scope)
+
+- **`tools/build-bundle.sh` — full referential-integrity check.** Replaces the Phase-1 skeleton. `--check` mode walks every `bundles/*.yaml` and verifies: (1) structural fields present (`bundle:`, `version:`, `loads:`); (2) every path in `loads:`/`optional:`/`adapter_specific:` exists on disk; (3) every non-universal `loads:` file declares the consuming role in its frontmatter `audience` or `also_needed_by`. Bundle-name normalisation handles dash-vs-underscore (`apply-meta` → `apply_meta`), executor sub-specialisations (`executor-research`/`executor-commercial` → `executor`), and composite bundles (`orchestrator-core`/`agent-onboarding` → wildcard match). Generate mode (`tools/build-bundle.sh <role>`) emits a CANDIDATE manifest to stdout for human review against the committed bundle. Byte-equivalent deterministic regeneration deferred to a future release.
+- **`.github/workflows/ci.yml` — CI drift gate.** Runs on every push to `main` and every pull request to `main`. Three steps: `verify-frontmatter --strict` (required keys + `max_lines`); `verify-cross-refs`; `build-bundle --check`. Realises the "Phase 6 onward" promise from `bundles/_README.md`.
+
+### Added — Carry-forward closures
+
+- **`commands/_delegate.md` Step 4 host_access re-check** (v2.10 carry-forward). Defense-in-depth re-evaluation of `policy.host_local_service_dependent_roles` against the resolved `(adapter, effective_sandbox)` pair after `sandbox_override` is applied in Step 3 — Step 2's cached probe response can be stale, and the cached check is the failure mode v2.10 codified the rule against. On miss: re-route per `policy.on_host_access_missing_for_required_role` (escalate / reroute / inline).
+- **`commands/_delegate.md` Step 8 INVARIANT-10 sub-check** (v2.9 carry-forward). When the artifact bundle includes `iterations/current/execution-log.md` and the dispatched adapter's `enforces_pre_action_facts != true`, the orchestrator scans the log for a four-fact block preceding every state-mutating tool invocation. Read-only invocations carved out per INVARIANT 10. Missing/malformed block: `schema_verdict = FAIL` with subtype `inv10-fact-missing`.
+- **`60-schemas/execution-log.md` — Pre-action fact presentation section.** Documents the format the Step 8 sub-check validates against. Frontmatter version 2.9 → 2.10; `last_reviewed: 2026-05-07`; `max_lines: 100 → 130`. Validation enumeration extended to mention the INV-10 block.
+- **`adoption-guides/v2.9-invariant-10.md` — first adopter-facing guide** (v2.9 carry-forward). Per-runtime enforcement instructions: Claude Code (`gateguard` skill), Claude Agent SDK (PreToolUse callback), bridge-only adapters (`enforces_pre_action_facts: "orchestrator-side"` + orchestrator-emitted block), custom CLIs (host-side wrapper). Migration path for `config_revision: 1` projects.
+
+### Fixed — Real frontmatter drift surfaced by the new `--check`
+
+- **`30-knowledge/temporal-facts.md`** `also_needed_by:` adds `executor`. The file was already loaded by `bundles/executor-research.yaml` but the frontmatter never named the executor role — the new check caught the asymmetry.
+- **`60-schemas/audit-report.md`** `audience:` adds `pre_check`. Loaded by `bundles/pre-check.yaml` (pre-check evaluator reads truthsayer's audit-report); audience never named pre_check.
+- **`60-schemas/quality-criteria.md`** `audience:` adds `pre_check`. Loaded by `bundles/pre-check.yaml`; audience never named pre_check.
+
+### Updated
+
+- **`bundles/_README.md`** — drift-detection paragraph rewritten to describe Phase 6a's referential-integrity semantics + the candidate-manifest fallback for the deferred byte-equivalent regen.
+- **`80-status/shipped-vs-planned.md`** — `commands/_delegate.md`, Layer-2-directories, Bundle-manifests, and `tools/` rows updated to reflect Phase 6a closures. Two new rows added (`.github/workflows/ci.yml`, `adoption-guides/v2.9-invariant-10.md`). Phase-status table: Phase 6 split into 6a (shipped 2026-05-07) and 6b (planned: monolith demotion).
+
+### Why no SYSTEM-BLUEPRINT version bump
+
+`SYSTEM-BLUEPRINT.md` already states the gates this release implements (§25 promises Step 8 validates; §2 INVARIANT 10 promises pre-action facts; §25 v2.10 promises host_access compatibility). The blueprint is the contract; `commands/_delegate.md` is the operationalisation. This release adds operational fidelity to the existing contract — no new contract surface. Frontmatter `version` field on `60-schemas/execution-log.md` bumped 2.9 → 2.10 to reflect that it now mirrors the v2.10 source rather than the v2.9 source; the SYSTEM-BLUEPRINT.md front-matter remains 2.10.
+
+### What Phase 6a does NOT do
+
+- Does not regenerate `SYSTEM-BLUEPRINT.md` from Layer-2 (that's Phase 6b — "demote monolith").
+- Does not implement byte-equivalent deterministic bundle regeneration. Bundles remain hand-curated v1; the candidate-manifest mode is informational.
+- Does not write a reference `tools/host-shell-wrapper.sh` for custom-CLI INVARIANT-10 enforcement (still tracked in v2.10 unresolved items).
+- Does not change the iteration lifecycle, ledger schema, or any blueprint section.
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `tools/build-bundle.sh` | Real `--check` (referential-integrity) + candidate-manifest generate mode; replaces Phase-1 skeleton |
+| `.github/workflows/ci.yml` | **NEW** — CI drift gate (frontmatter + cross-refs + bundle check) |
+| `commands/_delegate.md` | Step 4 host_access re-check; Step 8 INVARIANT-10 sub-check |
+| `60-schemas/execution-log.md` | Pre-action fact presentation section; frontmatter version 2.9 → 2.10; max_lines 100 → 130; validation enumeration extended |
+| `30-knowledge/temporal-facts.md` | `also_needed_by:` adds `executor` |
+| `60-schemas/audit-report.md` | `audience:` adds `pre_check` |
+| `60-schemas/quality-criteria.md` | `audience:` adds `pre_check` |
+| `adoption-guides/v2.9-invariant-10.md` | **NEW** — first adoption guide; closes v2.9 unresolved item |
+| `bundles/_README.md` | Drift-detection paragraph rewritten |
+| `80-status/shipped-vs-planned.md` | Asset rows updated; two new rows; Phase 6 split into 6a (shipped) and 6b (planned) |
+| `CHANGELOG.md` | this entry |
+
+### Unresolved items (deferred)
+
+- **Phase 6b — monolith demotion** (regenerate `SYSTEM-BLUEPRINT.md` from Layer-2 + 5-day soak). `tools/build-blueprint.sh` operational; soak procedure still to be drafted.
+- **Byte-equivalent deterministic bundle regeneration.** Phase 6a ships referential-integrity; deterministic regen requires a richer derivation rule that captures the ordering and curation in v1 hand-written bundles.
+- **`tools/host-shell-wrapper.sh`** — reference INVARIANT-10 wrapper for custom CLI adapters (carried forward from v2.10 unresolved).
+- **`70-adoption/` numbered Layer-2 directory** — separate from `adoption-guides/`; per the v3.0 plan, future adoption-guides should be moved here once the format is settled.
+
 ## v2.10 — 2026-05-04
 
 **Source**: Codex-authored update to the bridge contract — `../claude-codex-orchestration/BRIDGE_REQUIREMENTS.md` §"Local service / socket access" (lines 165-192). Trigger: a Stage-4 failure where a Codex job launched via `codex-task-bridge run --mode implement` specifically to run `psql` reported the database cluster as unavailable, despite holding `workspace-write` and `--full-auto`. Codex correctly diagnosed that `workspace-write`, `--full-auto`, and `implement` mode are filesystem and approval-mode directives that do NOT imply loopback TCP or Unix-socket reachability, and recommended an additive `host_access: {loopback_tcp: bool, unix_sockets: bool}` capability on `capabilities --json`. This release propagates the lesson to the orchestrator side of the contract.

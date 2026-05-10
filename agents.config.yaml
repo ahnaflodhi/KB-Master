@@ -16,9 +16,9 @@
 # always map to the running Claude Code session (claude-main). Any other
 # assignment is a configuration error and the orchestrator will refuse to start.
 
-schema_version: 2                 # v3.0 Phase 6b — adds REQUIRED `loads_bundle` field on every agent
-config_revision: 4                # bump on every edit; recorded in verification ledger
-last_updated: 2026-05-07
+schema_version: 3                 # v3.0 Phase 6b — adds REQUIRED `family` field on every agent (INV 1.A enforcement)
+config_revision: 5                # bump on every edit; recorded in verification ledger
+last_updated: 2026-05-10
 
 # ---------------------------------------------------------------------------
 # 1. ADAPTERS — protocol-layer drivers. One per agent type.
@@ -139,6 +139,7 @@ agents:
   # `orchestrator` role. Cannot be spawned, cannot be replaced at runtime.
   claude-main:
     adapter: claude-orchestrator
+    family: claude                    # INV 1.A — enforces cross-family Generator≠Evaluator
     model: claude-opus-4-7
     is_orchestrator: true
     loads_bundle: orchestrator-core   # also dispatches apply_meta inline; orchestrator-core covers both
@@ -154,6 +155,7 @@ agents:
   # even when both ends are Claude (just different contexts).
   claude-worker-planner:
     adapter: claude-native
+    family: claude
     sub_mode: subagent
     model: claude-opus-4-7
     loads_bundle: planner             # also re-used for meta_review role; meta-review bundle loaded at dispatch time per roles map
@@ -163,6 +165,7 @@ agents:
 
   claude-worker-precheck:
     adapter: claude-native
+    family: claude
     sub_mode: subagent
     model: claude-sonnet-4-6           # mid-tier for mechanical checklist work (§17)
     loads_bundle: pre-check
@@ -172,6 +175,7 @@ agents:
 
   claude-worker-research:
     adapter: claude-native
+    family: claude
     sub_mode: subagent
     model: claude-opus-4-7
     loads_bundle: executor-research
@@ -181,6 +185,7 @@ agents:
 
   claude-worker-commercial:
     adapter: claude-native
+    family: claude
     sub_mode: subagent
     model: claude-opus-4-7
     loads_bundle: executor-commercial
@@ -190,6 +195,7 @@ agents:
 
   claude-worker-kblint:
     adapter: claude-native
+    family: claude
     sub_mode: subagent
     model: claude-sonnet-4-6           # mechanical maintenance (§17)
     loads_bundle: kb-linter
@@ -199,6 +205,7 @@ agents:
 
   claude-worker-wiki-ingest:
     adapter: claude-native
+    family: claude
     sub_mode: subagent
     model: claude-opus-4-7
     loads_bundle: wiki-ingest
@@ -208,6 +215,7 @@ agents:
 
   claude-worker-wiki-query:
     adapter: claude-native
+    family: claude
     sub_mode: subagent
     model: claude-sonnet-4-6
     loads_bundle: wiki-query
@@ -220,6 +228,7 @@ agents:
   # subagent alone).
   codex-audit:
     adapter: codex-bridge
+    family: codex
     bridge_mode: design                # protocol 1 fallback; review when protocol >= 2
     sandbox: read-only
     model: gpt-5-codex
@@ -228,16 +237,20 @@ agents:
 
   codex-eval:
     adapter: codex-bridge
+    family: codex
     bridge_mode: design                # upgrades to `review` once bridge protocol >= 2
     sandbox: read-only
     model: gpt-5-codex
     loads_bundle: evaluator
     capabilities: [evaluate, claim-verification, reward-hacking-check]
 
-  # Optional Codex executor — for commercial work where adversarial diversity
-  # at execution stage is desired (executor: codex, evaluator: claude → cross-family).
+  # Codex executor — INV 1.A symmetry. The orchestrator (or user) freely
+  # assigns executor.* to whichever family fits the task; the validator
+  # guarantees the evaluator family differs. No service-centric default
+  # is baked in — same-family pairings are blocked at config load.
   codex-implement:
     adapter: codex-bridge
+    family: codex
     bridge_mode: implement
     sandbox: workspace-write
     model: gpt-5-codex
@@ -262,8 +275,8 @@ roles:
   pre_check: claude-worker-precheck
 
   executor:
-    research: claude-worker-research
-    commercial: claude-worker-commercial   # swap to codex-implement for cross-family
+    research: claude-worker-research       # any executor agent OK; INV 1.A guarantees evaluator family ≠ executor family
+    commercial: claude-worker-commercial   # any executor agent OK; orchestrator/user picks per task; validator enforces cross-family
 
   evaluator: codex-eval              # different family from executor → diversity
   kb_linter: claude-worker-kblint
@@ -284,7 +297,10 @@ validation:
   semantic_isolation_required: true             # §19 v2.1 addendum
   reward_hacking_check_on_delegated: true       # §18, mandatory on every consume
   source_recheck_sample_rate: 0.20              # orchestrator re-fetches 20% of cited URLs
-  cross_family_evaluator_preferred: true        # warn if executor & evaluator share a model family
+  cross_family_evaluator_preferred: true        # legacy soft check; superseded by hard rule below
+  cross_family_evaluator_required: true         # INV 1.A — load-time fail-fast if executor & evaluator share family
+  cross_family_truthsayer_required: true        # INV 1.A — load-time fail-fast if planner & truthsayer share family
+  on_cross_family_violation: fail-fast          # alternatives: warn (degrade) | escalate (write escalation.md)
   verification_ledger_path: pipeline/verification-ledger.jsonl
   on_validation_failure: re-delegate            # options: re-delegate | escalate | route-to-planner
   re_delegate_max_attempts: 1                   # then escalate

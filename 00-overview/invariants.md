@@ -5,7 +5,7 @@ purpose: invariant
 audience: [orchestrator, planner, truthsayer, pre_check, executor, evaluator, kb_linter, wiki_ingest, wiki_query, meta_review, apply_meta]
 status: stable
 version: 2.9
-last_reviewed: 2026-05-04
+last_reviewed: 2026-05-10
 extracted_from:
   source: SYSTEM-BLUEPRINT-v2.9.md
   sections: ["§2 Non-Negotiable Invariants"]
@@ -14,7 +14,7 @@ related:
   - 10-pipeline/state-machine.md
   - 40-runtime/delegation-protocol.md
   - 40-runtime/verification-ledger.md
-max_lines: 180
+max_lines: 210
 directives:
   must_count: 0
   should_count: 0
@@ -32,6 +32,42 @@ INVARIANT 1: Generator ≠ Evaluator (for non-mechanical outputs)
   schema validation, URL reachability), Executor self-verification with tool
   use is acceptable as a pre-check. The structural Evaluator separation is
   required for quality scoring, claim verification, and acceptance determination.
+
+INVARIANT 1.A: Generator ≠ Evaluator across agent families (principle-centric)
+  The structural separation in INV 1 MUST hold at the agent-FAMILY level,
+  not just the agent-instance level. If the Executor is a Claude-family
+  agent, the Evaluator MUST be a non-Claude-family agent (Codex, Mistral,
+  Cursor, future families). The same rule applies to the Planner ≠ TruthSayer
+  pair: cross-family separation is required.
+
+  Why families, not instances: same-family agents share training data,
+  tokenizer, and base model behaviour. Two Claude workers (e.g. claude-
+  worker-research as Executor + a hypothetical claude-worker-eval as
+  Evaluator) satisfy INV 1's per-invocation rule but share the same blind
+  spots — a Shopify-documented reward-hacking attractor. Cross-family
+  review forces independent failure modes.
+
+  PRINCIPLE-CENTRIC, NOT SERVICE-CENTRIC: This invariant binds families,
+  not specific agent names. The framework MUST NOT bake in "Claude is the
+  executor, Codex is the evaluator" as a default — the orchestrator (or
+  the user via direct directive) is free to assign high-level tasks to
+  ANY service agent that satisfies the principle. New families plug in
+  the same way: declare `family: <name>` on the agent in
+  `agents.config.yaml` and the validator picks them up automatically. No
+  rigid Claude/Codex bounds.
+
+  ENFORCEMENT: `agents.config.yaml.validation.cross_family_evaluator_required`
+  (true by default; load-time fail-fast) and
+  `validation.cross_family_truthsayer_required` (true by default).
+  `commands/_delegate.md` Step 1 LOAD evaluates both before any dispatch.
+  Adopters MAY set these to false during single-family bootstrap (Claude-
+  only with no Codex bridge installed yet); production deployments
+  targeting non-trivial work MUST keep both true.
+
+  CARVE-OUT (single-family bootstrap): when only one family is available,
+  the rule degrades to per-invocation INV 1 separation only — recorded in
+  the verification ledger as `cross_family_unavailable: true` so meta-
+  review can flag the reduced assurance.
 
 INVARIANT 2: TruthSayer is adversarial
   "Find what is wrong, weak, or missing. Not here to praise."

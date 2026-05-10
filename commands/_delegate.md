@@ -180,7 +180,7 @@ If all sub-checks PASS: `verification_verdict = PASS`.
 
 - **Write CONSUME ledger entry** to `pipeline/verification-ledger.jsonl`:
   ```jsonl
-  {"ts":"<ISO-8601>","event":"consume","iter":"<iter_id>","role":"<role>","agent_id":"<agent_name>","job_id":"<job_id>","output_hash":"sha256:<hex>","auth_verdict":"<PASS|FAIL>","schema_verdict":"<PASS|FAIL>","verification_verdict":"<PASS|FAIL|REWARD-HACK|SOURCE-MISMATCH|STATIC-ONLY|NO-COMMIT|NO-SUMMARY>","reward_hacking_check":"<CLEAN|FLAGGED>","source_recheck_sample":[{"url":"<url>","status":"<verified|missing>"}],"final_verdict":"<accepted|rejected-...|re-delegated|escalated>","verifier":"claude-main","notes":"<diversity-warnings or fallback-notes>"}
+  {"ts":"<ISO-8601>","event":"consume","iter":"<iter_id>","role":"<role>","agent_id":"<agent_name>","job_id":"<job_id>","output_hash":"sha256:<hex>","auth_verdict":"<PASS|FAIL>","schema_verdict":"<PASS|FAIL>","verification_verdict":"<PASS|FAIL|REWARD-HACK|SOURCE-MISMATCH|STATIC-ONLY|NO-COMMIT|NO-SUMMARY>","inv11_verdict":"<PASS|FAIL>","reward_hacking_check":"<CLEAN|FLAGGED>","source_recheck_sample":[{"url":"<url>","status":"<verified|missing>"}],"final_verdict":"<accepted|rejected-...|re-delegated|escalated>","verifier":"claude-main","notes":"<diversity-warnings or fallback-notes>"}
   ```
 
 ### Step 11 — STATE (orchestrator-only)

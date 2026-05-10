@@ -155,6 +155,18 @@ For a concrete reference example, see the sibling project `claude-codex-orchestr
 
 The minimum acceptable acknowledgment is a single sentence: *"This project is a downstream consumer of KB-Orchestrator-Core (`<vendoring-path-or-url>`); it owns `<your-concrete-scope>`; upstream owns roles, dispatch, ledger, INV 9 / INV 10."* Anything more is value-add for future readers.
 
+### Integrating with an existing CLAUDE.md
+
+Most adopting projects already have a CLAUDE.md with their own directives (commit conventions, code style, deployment process, domain rules). The Directive paragraph (Section 1) and the Upstream framework section above **add to** that file; they do not replace it. CLAUDE.md is concatenated markdown — multiple sections coexist cleanly. Three integration patterns:
+
+**Pattern A — Append as labeled sections (recommended for most adopters).** Add the Upstream framework section and the Directive paragraph as their own `## ...` blocks separated by `---` rules. Both heading lines SHOULD explicitly note the content was vendored from upstream (e.g. `## KB-Orchestrator-Core directive (v3.0 — vendored from upstream)`) so future readers immediately understand these are not project-local decisions. Existing project directives stay above/below unchanged. Pro: the contract is at-a-glance visible in CLAUDE.md. Con: framework version bumps require a manual edit.
+
+**Pattern B — `@`-import the vendored guide.** Claude Code's CLAUDE.md supports `@<path>` to inline another file's contents at session load. Reference your vendored copy of this guide directly (e.g. `@vendor/kb-orc/adoption-guides/external-orchestrator-directive.md`). Pro: framework upgrades are a single `git pull` in the vendored copy with no CLAUDE.md edit. Con: the contract is one indirection away from a casual CLAUDE.md reader. Choose Pattern B when long-term maintenance burden matters more than at-a-glance discoverability.
+
+**Pattern C — Hierarchical CLAUDE.md (rarely right).** Claude Code concatenates CLAUDE.md from `~/.claude/`, the project root, and subdirectories. You could put the Directive in `~/.claude/CLAUDE.md` if every project on your machine adopts this framework — uncommon, but documented for completeness.
+
+**Conflict resolution.** Where a project-local directive overlaps an upstream-owned concept (role abstraction, §25 dispatch shim, verification ledger, INV 9 / INV 10, capability matrix), the upstream-owned concept wins per the Boundary precedence rule above — your project-local directive must change to match. Anywhere else (commit conventions, code style, deployment process, CI rules, your domain logic), project directives govern unchanged. In practice 99% of existing CLAUDE.md content lives in domains the framework does not touch, so most adoptions are pure addition with no conflict resolution needed. The realistic friction is two minutes of finding the right insertion point in your existing CLAUDE.md, not a rewrite of project conventions.
+
 ---
 
 ## Cross-references

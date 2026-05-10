@@ -43,7 +43,8 @@ Operationalised against `INVARIANT 11` (minimum-viable context per role; princip
 
 **Operator actions per day:**
 - Inspect `pipeline/verification-ledger.jsonl` for any new dispatch+consume rows. For each, confirm:
-  - The `prompt_hash` was derived from a bundle (recoverable via the role's `loads_bundle:` field), not the monolith.
+  - The dispatch row's `context_sources` field is non-empty, does NOT contain `SYSTEM-BLUEPRINT.md` (CARVE-OUT for `meta_review` / `apply_meta`), and `context_selection_mechanism` is named (per INV 11). Mechanism may be `"bundle"` (framework default) or any adopter substitution (`"semantic-routing"`, `"dynamic-composition"`, etc.) — the soak audits the OUTCOME, not which mechanism produced it.
+  - The consume row's `inv11_verdict` is `PASS`.
   - No row's `notes` field references `SYSTEM-BLUEPRINT.md`.
 - If any agent (orchestrator, worker, or delegated bridge job) ran a `Read` against `SYSTEM-BLUEPRINT.md` during this window: STOP. Increment `monolith_reads_during_soak` and reset `iterations_observed` to 0. The soak restarts on the next clean day.
 - Increment `iterations_observed` by the count of fully-completed iterations (start → archive) where every dispatched role passed verification.
@@ -79,7 +80,7 @@ Operationalised against `INVARIANT 11` (minimum-viable context per role; princip
 | **CI gate breaks** | `verify-frontmatter --strict` or `verify-cross-refs` or `build-bundle --check` fails on a PR | Fix the underlying drift; reset day counter |
 | **Bundle drift** | `tools/build-bundle.sh --check` reports a referential-integrity failure | Patch the offending frontmatter or bundle; reset day counter |
 | **Candidate semantic drift** | Daily candidate diff vs. prior day's candidate shows non-structural changes (semantic content moved between files unintentionally) | Investigate; if Layer-2 was edited, this is expected — confirm and continue. Otherwise reset. |
-| **Agent skips bundle** | A dispatched role somehow loads more than its bundle declares | Tighten the role's `_delegate.md` PREPARE step; reset day counter |
+| **INV 11 violation** | A dispatched role's DISPATCH row has `SYSTEM-BLUEPRINT.md` in `context_sources`, empty `context_sources`, or missing `context_selection_mechanism` (and the role is not in CARVE-OUT) | Step 10 sets `inv11_verdict = FAIL`; orchestrator routes per `validation.on_validation_failure`. Reset day counter. The check is mechanism-agnostic — bundles, semantic routing, dynamic composition all qualify as long as INV 11 holds. |
 
 ## Where the live monolith stays during soak
 

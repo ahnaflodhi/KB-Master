@@ -24,7 +24,7 @@ A role-stable, agent-configurable orchestration architecture for self-learning k
 
 Every delegation flows through the §25 11-step dispatch shim (`commands/_delegate.md` — also documented in `40-runtime/dispatch-shim.md`). The verification ledger (`pipeline/verification-ledger.jsonl`) is the audit trail.
 
-## The 10 invariants (cannot be relaxed)
+## The 11 invariants (cannot be relaxed)
 
 See `00-overview/invariants.md`. Inv 9 (orchestrator non-delegable) and Inv 10 (pre-action fact presentation) are the load-time enforcement points — `agents.config.yaml` validates compliance at session start.
 

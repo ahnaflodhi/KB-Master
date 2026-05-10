@@ -4,12 +4,12 @@ title: Non-Negotiable Invariants
 purpose: invariant
 audience: [orchestrator, planner, truthsayer, pre_check, executor, evaluator, kb_linter, wiki_ingest, wiki_query, meta_review, apply_meta]
 status: stable
-version: 2.9
-last_reviewed: 2026-05-10
+version: 3.0
+last_reviewed: 2026-05-11
 extracted_from:
-  source: SYSTEM-BLUEPRINT-v2.9.md
-  sections: ["§2 Non-Negotiable Invariants"]
-  line_range_hint: "search for ## 2. heading"
+  source: SYSTEM-BLUEPRINT-v2.9.md (INV 1-10) + framework-internal v3.0 promotion (INV 1.A, INV 11)
+  sections: ["§2 Non-Negotiable Invariants", "v3.0 INV 1.A — cross-family Generator≠Evaluator (principle-centric)", "v3.0 INV 11 — minimum-viable context per role (principle-centric)"]
+  line_range_hint: "search for ## 2. heading; INV 1.A and INV 11 are framework-internal additions, not extracted from a prior monolith"
 related:
   - 10-pipeline/state-machine.md
   - 40-runtime/delegation-protocol.md

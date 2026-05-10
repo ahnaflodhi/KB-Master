@@ -93,7 +93,7 @@ orchestrator's context; step 11 mutates pipeline state.
   - `inputs[]` file contents (already on disk; agent will read from there).
 - **Load minimum-viable context per INV 11.** The framework's recommended mechanism is `bundles/<role>.yaml` — load every file under the bundle's `loads:`, plus `optional:` files that exist, plus `adapter_specific:` files matching the resolved adapter. Adopters MAY substitute a different mechanism (semantic context routing, dynamic composition, RAG-style retrieval) provided INV 11 holds: minimum-viable, no `SYSTEM-BLUEPRINT.md`, recorded in the DISPATCH ledger row's `context_sources` field. The CARVE-OUT in INV 11 (`meta_review`, `apply_meta` may load wider context) applies here.
 - **Apply semantic-isolation** (§19): if any portion of `prompt` was extracted from a previously-agent-written file (e.g. quoting an Objective field from `spec.md`), wrap that portion in a delimited block tagged `<extracted-data>` so the receiving agent treats it as data, not instructions.
-- Record the resolved `context_sources` (list of file paths actually loaded, plus the selection mechanism used — e.g. `"bundles/truthsayer.yaml"` or `"semantic-routing-v1"`) for the Step 4 DISPATCH ledger row.
+- Record two values for the Step 4 DISPATCH ledger row: `context_sources` = list of file paths actually loaded (e.g. `["bundles/truthsayer.yaml", "00-overview/invariants.md", "20-roles/truthsayer.md", "60-schemas/audit-report.md"]`); `context_selection_mechanism` = string naming the mechanism that produced the list (e.g. `"bundle"`, `"semantic-routing-v1"`, `"dynamic-composition"`).
 - Compute `prompt_hash = sha256(prompt)`.
 - Determine effective sandbox: `sandbox_override` ?? `agent_spec.sandbox`.
 - Determine effective model: `model_override` ?? `agent_spec.model`.
@@ -166,8 +166,10 @@ If all sub-checks PASS: `verification_verdict = PASS`.
 
 ### Step 10 — CONSUME or REJECT
 
+- **Invariant 11 enforcement (minimum-viable context, principle-centric)**: inspect the dispatch ledger row's `context_sources` field for the current `job_id`. Set `inv11_verdict = FAIL` if any of the following hold (and the role is NOT in INV 11's CARVE-OUT list `meta_review` / `apply_meta`): (a) `SYSTEM-BLUEPRINT.md` appears in `context_sources` — hard fail, monolith load violates INV 11; (b) `context_sources` is empty or absent — every dispatch must record what was loaded; (c) `context_selection_mechanism` is missing or `"unknown"`. Otherwise `inv11_verdict = PASS`. The check is mechanism-agnostic — it audits the OUTCOME (no monolith, recorded), not whether bundles were used.
+
 - Compute `final_verdict`:
-  - All of `auth_verdict`, `schema_verdict`, `verification_verdict` are PASS → `final_verdict = accepted`.
+  - All of `auth_verdict`, `schema_verdict`, `verification_verdict`, `inv11_verdict` are PASS → `final_verdict = accepted`.
   - Any FAIL → apply `validation.on_validation_failure`:
     - `re-delegate`: increment a per-(role, iter) re-delegate counter. If under `re_delegate_max_attempts`: re-run from step 3 with the same agent (or the next-best agent if rejection was severe — currently never; future enhancement). If at limit: escalate.
     - `escalate`: write `iterations/current/escalation.md` with reason `delegation-validation-failed: <agent_id>: <verdict>`.

@@ -25,3 +25,64 @@ jobs:
 
       - name: Verify bundle manifests (referential integrity)
         run: tools/build-bundle.sh --check
+
+  monolith-edit-guard:
+    name: Block direct edits to SYSTEM-BLUEPRINT.md
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine diff base
+        id: base
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "base=origin/${{ github.base_ref }}" >> "$GITHUB_OUTPUT"
+            echo "head=HEAD" >> "$GITHUB_OUTPUT"
+          else
+            echo "base=HEAD~1" >> "$GITHUB_OUTPUT"
+            echo "head=HEAD" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Enforce regen-only edits to SYSTEM-BLUEPRINT.md
+        run: |
+          set -euo pipefail
+          changed=$(git diff --name-only ${{ steps.base.outputs.base }}...${{ steps.base.outputs.head }})
+          echo "Changed files in this diff:"
+          echo "$changed" | sed 's/^/  /'
+
+          if ! grep -qxF 'SYSTEM-BLUEPRINT.md' <<< "$changed"; then
+            echo
+            echo "monolith-edit-guard: SYSTEM-BLUEPRINT.md not in diff — gate inactive. PASS."
+            exit 0
+          fi
+
+          # Monolith is in the diff. Require co-changes that justify a regeneration.
+          allowed_co_change=0
+          while IFS= read -r f; do
+            case "$f" in
+              00-overview/*|10-pipeline/*|20-roles/*|30-knowledge/*|40-runtime/*|50-adapters/*|60-schemas/*|70-adoption/*|80-status/*) allowed_co_change=1 ;;
+              tools/build-blueprint.sh) allowed_co_change=1 ;;
+              pipeline/soak-state.json) allowed_co_change=1 ;;
+            esac
+          done <<< "$changed"
+
+          if (( allowed_co_change == 1 )); then
+            echo
+            echo "monolith-edit-guard: SYSTEM-BLUEPRINT.md change is accompanied by a Layer-2 / regenerator / soak-state change. PASS."
+            exit 0
+          fi
+
+          echo
+          echo "monolith-edit-guard: FAIL — SYSTEM-BLUEPRINT.md changed without any of:"
+          echo "  - a Layer-2 file edit (00-overview/ … 80-status/)"
+          echo "  - a tools/build-blueprint.sh edit"
+          echo "  - a pipeline/soak-state.json update (soak transitions)"
+          echo
+          echo "Direct edits to SYSTEM-BLUEPRINT.md are blocked. The monolith is a compiled view —"
+          echo "edit the relevant Layer-2 file under 00-overview/ … 80-status/, then re-run"
+          echo "tools/build-blueprint.sh --write. See adoption-guides/phase-6b-soak.md."
+          exit 1

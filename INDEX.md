@@ -20,7 +20,7 @@ A role-stable, agent-configurable orchestration architecture for self-learning k
 
 1. **Roles** (blueprint, stable): planner, truthsayer, pre-check, executor (research/commercial), evaluator, kb-linter, wiki-ingester, wiki-querier, meta-review, apply-meta, orchestrator. Defined in `20-roles/<role>.md`.
 2. **Agents** (concrete instances, configurable): `claude-main`, `claude-worker-*`, `codex-*`, future `devstral-*`, `mistral-*`, `cursor-*`, etc. Bound to roles via `agents.config.yaml`.
-3. **Adapters** (protocol drivers): `claude-orchestrator`, `claude-native` (subagent + sdk), `codex-bridge`, future `openai-compat-http`, `cursor-cli`, `mcp-agent`. Defined in `50-adapters/<adapter>.md`.
+3. **Adapters** (protocol drivers): `claude-orchestrator`, `claude-native` (subagent + sdk), `codex-bridge` (canonical implementation: sibling project `claude-codex-orchestration` — wiring guide: `adoption-guides/codex-bridge-adapter.md`), future `openai-compat-http`, `cursor-cli`, `mcp-agent`. Defined in `50-adapters/<adapter>.md`.
 
 Every delegation flows through the §25 11-step dispatch shim (`commands/_delegate.md` — also documented in `40-runtime/dispatch-shim.md`). The verification ledger (`pipeline/verification-ledger.jsonl`) is the audit trail.
 

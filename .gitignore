@@ -9,3 +9,9 @@
 *.swp
 *.swo
 *~
+
+# Phase 6b — regenerator artifacts
+# The candidate blueprint is regenerated during the soak; reviewed via diff
+# rather than committed. The pre-regen backup is created by `tools/build-blueprint.sh --write`.
+SYSTEM-BLUEPRINT.candidate.md
+.SYSTEM-BLUEPRINT.pre-regen.*.md

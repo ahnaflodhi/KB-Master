@@ -1,5 +1,84 @@
 # Changelog — SYSTEM-BLUEPRINT.md
 
+## Phase 6b (v3.0) — 2026-05-08 — soak initiated
+
+**Source**: User-driven directive — *"start phase 6b"* — the second half of v3.0 Phase 6: demote `SYSTEM-BLUEPRINT.md` from canonical truth-source to compiled view regenerated from Layer-2. This entry documents soak **initiation**; soak completion (criterion #8: "5 consecutive iterations of any agent role complete without reading SYSTEM-BLUEPRINT.md") lands at day 5 (target 2026-05-13) and ships the `v3.0.0` tag plus the comprehensive v3.0 CHANGELOG entry (criterion #10).
+
+### Phase 6 exit criteria — current state
+
+| # | Criterion | Status |
+|---|---|---|
+| 1 | `tools/verify-frontmatter.sh` exits 0 | ✅ green (46 files) |
+| 2 | `tools/verify-cross-refs.sh` exits 0 | ✅ green (74 refs) |
+| 3 | `tools/build-blueprint.sh` regenerates the blueprint | ✅ Phase 6b — real concat logic (was Phase-1 skeleton) |
+| 4 | All 13 bundles + `build-bundle --check` zero drift | ✅ Phase 6a |
+| 5 | `agents.config.yaml.schema_version == 2`; every agent has `loads_bundle:` | ✅ Phase 6b — schema_version 1→2, config_revision 3→4, all 11 agents annotated |
+| 6 | CLAUDE.md and README.md point at INDEX.md | ✅ Phase 6b — repointed |
+| 7 | All 11 role-bearing slash commands exist | ✅ Phase 5 |
+| 8 | 5 consecutive iterations without reading SYSTEM-BLUEPRINT.md | ⏳ soak in progress |
+| 9 | Verification ledger contains restructure audit trail | ✅ 134 entries |
+| 10 | Comprehensive v3.0 CHANGELOG entry | ⏳ at soak end |
+
+### Added
+
+- **`tools/build-blueprint.sh` — real concat logic** (criterion #3). Three modes: default (writes candidate to `SYSTEM-BLUEPRINT.candidate.md`, non-destructive), `--write` (replaces live monolith with backup), `--dry-run` (inventory only). Walks Layer-2 dirs in canonical order (`00-overview/` first, `80-status/` last); strips frontmatter; promotes `title:` to `##` heading; inserts `# Layer 2 — <dir>` separators. Synthesises preamble + regeneration-trailer. The default mode is deliberately non-destructive so the candidate can be inspected during the soak without touching the canonical file.
+- **`adoption-guides/phase-6b-soak.md`** — operating contract for the 5-day soak. Day-by-day checklist, failure modes, abort/restart rules, day-5 swap procedure (`tools/build-blueprint.sh --write` + tag + CI gate enable). Day 1 includes a 20% sample semantic-equivalence check between Layer-2 role files and live monolith §6/§25/§8 content.
+- **`pipeline/soak-state.json`** — soak day-counter. Fields: `phase`, `started_at` (ISO-8601), `target_end`, `status` (in-progress/passed/failed/aborted), `iterations_observed`, `monolith_reads_during_soak`, `candidate_path`, `notes`. Operator updates daily; agents that read `SYSTEM-BLUEPRINT.md` during the window cause `monolith_reads_during_soak` to increment and `iterations_observed` to reset to 0.
+- **`.github/workflows/ci.yml` `monolith-edit-guard` job** — blocks PRs/pushes that change `SYSTEM-BLUEPRINT.md` without an accompanying Layer-2 edit, `tools/build-blueprint.sh` edit, or `pipeline/soak-state.json` update. Prints a clear remediation message pointing at the soak procedure.
+
+### Changed — agents.config.yaml schema bump (criterion #5)
+
+- `schema_version: 1 → 2` — signals the new REQUIRED `loads_bundle: <name>` field on every agent.
+- `config_revision: 3 → 4`; `last_updated: 2026-05-04 → 2026-05-07`.
+- All 11 agents annotated with `loads_bundle:`:
+  - `claude-main` → `orchestrator-core` | `claude-worker-planner` → `planner` | `claude-worker-precheck` → `pre-check`
+  - `claude-worker-research` → `executor-research` | `claude-worker-commercial` → `executor-commercial`
+  - `claude-worker-kblint` → `kb-linter` | `claude-worker-wiki-ingest` → `wiki-ingest` | `claude-worker-wiki-query` → `wiki-query`
+  - `codex-audit` → `truthsayer` | `codex-eval` → `evaluator` | `codex-implement` → `executor-commercial`
+
+### Changed — CLAUDE.md and README.md repointed (criterion #6)
+
+- **`CLAUDE.md`**: "My Role as System Owner" reframes the responsibility from "maintain SYSTEM-BLUEPRINT.md" to "maintain Layer-2 — the monolith is a compiled view". Project Structure tree replaced with current actual state (47 Layer-2 files, 13 bundles, 11 commands, 1 adoption guide, CI workflow). "Update Protocol" now reads as: edit Layer-2 → run verify gates → CHANGELOG → re-run `tools/build-blueprint.sh --write` for compiled-view refresh. New invariant: never edit SYSTEM-BLUEPRINT.md by hand — round-trip through Layer-2.
+- **`README.md`**: blueprint-version badge bumped v2.8 → v2.10 and re-linked to INDEX.md (was SYSTEM-BLUEPRINT.md). Restructure-status badge bumped to "Phase 6b — Soak". The "Pass SYSTEM-BLUEPRINT.md to any agent" line replaced with "Point any agent at INDEX.md (or the role-specific bundle)". "What's Included" tree replaced with current reality. Quick Start "Option A" updated to copy the full Layer-2/bundle/tool/command set, and to instruct Claude Code to read INDEX.md (not the monolith).
+
+### Pending until soak end
+
+- Run `tools/build-blueprint.sh --write` (regenerates live `SYSTEM-BLUEPRINT.md` from Layer-2; saves backup snapshot).
+- Tag `v3.0.0`.
+- Append the comprehensive v3.0 CHANGELOG entry (criterion #10) summarising Phases 0 through 6 cumulatively.
+- Delete the candidate `SYSTEM-BLUEPRINT.candidate.md` (its work is done once the live file is regenerated).
+- Soft-delete or migrate the `70-adoption/` numbered directory placeholder once `adoption-guides/` is the established location.
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `tools/build-blueprint.sh` | Real concat logic; replaces Phase-1 skeleton |
+| `agents.config.yaml` | schema_version 1→2; config_revision 3→4; last_updated; 11 `loads_bundle:` fields added |
+| `CLAUDE.md` | Repointed to INDEX.md as runtime entry; Project Structure refreshed; Update Protocol rewritten; new no-hand-edit-monolith invariant |
+| `README.md` | Badge target; v3.0 banner; "Pass SYSTEM-BLUEPRINT.md" → "Point any agent at INDEX.md"; What's Included tree; Quick Start |
+| `adoption-guides/phase-6b-soak.md` | **NEW** — soak procedure |
+| `adoption-guides/external-orchestrator-directive.md` | **NEW** — drop-in directive + Bootstrap Prompt for foreign orchestrators (Claude Code, Claude Agent SDK, Codex, OpenAI-compatible, MCP-native); vendoring, per-adapter wiring, soak pinning, adopter sanity check |
+| `80-status/shipped-vs-planned.md` | New rows for `external-orchestrator-directive.md` and `codex-bridge-adapter.md`; deduplicated stray double-row; `last_reviewed` 2026-05-04 → 2026-05-10 |
+| `adoption-guides/codex-bridge-adapter.md` | **NEW** — Model C ownership formalization. Codex executor wiring guide naming sibling `claude-codex-orchestration` as canonical implementation of the codex-bridge adapter slot. 7 sections: ownership rationale, install paths, agents.config wiring, INV 10 enforcement, protocol probe + degradation, pinning, sanity check. |
+| `INDEX.md` | "Architecture in 30 seconds" Adapters bullet now names the sibling project as the codex-bridge canonical implementation and points at the new adoption guide |
+| `50-adapters/codex-bridge.md` | New "Ownership (Model C, 2026-05-10)" paragraph in body (not just frontmatter); cross-refs section adds `adoption-guides/codex-bridge-adapter.md`; `last_reviewed` 2026-05-04 → 2026-05-10 |
+| `adoption-guides/external-orchestrator-directive.md` | Section 3 Codex row appended pointer to `adoption-guides/codex-bridge-adapter.md` for full installation + wiring; Section 5 paragraph 1 fixed (gateguard is a Claude Code PreToolUse session hook, NOT a CI workflow check) — Codex audit pass 4 verdict READY |
+| `pipeline/soak-state.json` | **NEW** — soak day-counter (status: in-progress) |
+| `.github/workflows/ci.yml` | New `monolith-edit-guard` job |
+| `CHANGELOG.md` | this entry |
+
+### Why no SYSTEM-BLUEPRINT version bump (yet)
+
+The live `SYSTEM-BLUEPRINT.md` content is unchanged in this commit. Frontmatter `version: 2.10` stays. The `--write` swap at soak end will regenerate the file in place; that swap is when v2.10 effectively becomes "v3.0.0 — compiled view".
+
+### What Phase 6b initiation does NOT do
+
+- Does NOT overwrite the live `SYSTEM-BLUEPRINT.md`. The candidate is generated; the live file is canonical until day 5.
+- Does NOT delete the v2.10 archive snapshot or any prior version archive.
+- Does NOT change INDEX.md, the bundles, or any role contract.
+- Does NOT shorten the soak window. 5 days is fixed; counter resets on any failure mode.
+
 ## Phase 6a (v3.0) — 2026-05-07
 
 **Source**: User-driven directive — *"fold in the carry-forward items"* — folding the v2.9 and v2.10 unresolved-items list into v3.0 Phase 6 alongside the planned bundle generation tooling and CI drift gate. No SYSTEM-BLUEPRINT.md content/version bump (`commands/_delegate.md` is the operationalisation layer; the blueprint already promises the gates this release implements). Phase 6 is now split into 6a (this release: tooling + carry-forward closures) and 6b (planned: monolith demotion + 5-day soak).

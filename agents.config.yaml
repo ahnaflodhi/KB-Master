@@ -16,9 +16,9 @@
 # always map to the running Claude Code session (claude-main). Any other
 # assignment is a configuration error and the orchestrator will refuse to start.
 
-schema_version: 1
-config_revision: 3                # bump on every edit; recorded in verification ledger
-last_updated: 2026-05-04
+schema_version: 2                 # v3.0 Phase 6b — adds REQUIRED `loads_bundle` field on every agent
+config_revision: 4                # bump on every edit; recorded in verification ledger
+last_updated: 2026-05-07
 
 # ---------------------------------------------------------------------------
 # 1. ADAPTERS — protocol-layer drivers. One per agent type.
@@ -79,8 +79,9 @@ adapters:
     # each dispatch the orchestrator emits the §25-mandated 4-fact block
     # (request | what the dispatch produces | target_path | adapter+sandbox)
     # as user-visible text immediately before the bridge invocation.
-    # When bridge protocol >= 2 ships an in-process pre-action callback, this
-    # field flips to true and the per-dispatch shim is removed.
+    # The orchestrator-side enforcement is permanent for this adapter slot —
+    # per BRIDGE_REQUIREMENTS.md § Non-goals the bridge does NOT impose
+    # orchestration policy by design (no future protocol-2 callback planned).
     enforces_pre_action_facts: orchestrator-side    # tri-state: true | false | orchestrator-side
     pre_action_fact_mechanism: orchestrator-emitted-block
     # §25 v2.10 — Stage-4 evidence (../claude-codex-orchestration/BRIDGE_REQUIREMENTS.md
@@ -140,6 +141,7 @@ agents:
     adapter: claude-orchestrator
     model: claude-opus-4-7
     is_orchestrator: true
+    loads_bundle: orchestrator-core   # also dispatches apply_meta inline; orchestrator-core covers both
     capabilities:
       - dispatch
       - schema-validate
@@ -154,6 +156,7 @@ agents:
     adapter: claude-native
     sub_mode: subagent
     model: claude-opus-4-7
+    loads_bundle: planner             # also re-used for meta_review role; meta-review bundle loaded at dispatch time per roles map
     system_role_hint: "blueprint-planner"
     sandbox: read-only
     capabilities: [plan, draft-spec]
@@ -162,6 +165,7 @@ agents:
     adapter: claude-native
     sub_mode: subagent
     model: claude-sonnet-4-6           # mid-tier for mechanical checklist work (§17)
+    loads_bundle: pre-check
     system_role_hint: "blueprint-pre-check"
     sandbox: read-only
     capabilities: [pre-check, ambiguity-detection]
@@ -170,6 +174,7 @@ agents:
     adapter: claude-native
     sub_mode: subagent
     model: claude-opus-4-7
+    loads_bundle: executor-research
     system_role_hint: "blueprint-executor-research"
     sandbox: workspace-write
     capabilities: [research-execute, wiki-write, source-save]
@@ -178,6 +183,7 @@ agents:
     adapter: claude-native
     sub_mode: subagent
     model: claude-opus-4-7
+    loads_bundle: executor-commercial
     system_role_hint: "blueprint-executor-commercial"
     sandbox: workspace-write
     capabilities: [commercial-execute, code-write, git-commit]
@@ -186,6 +192,7 @@ agents:
     adapter: claude-native
     sub_mode: subagent
     model: claude-sonnet-4-6           # mechanical maintenance (§17)
+    loads_bundle: kb-linter
     system_role_hint: "blueprint-kb-linter"
     sandbox: workspace-write
     capabilities: [kb-lint, promotion, eviction]
@@ -194,6 +201,7 @@ agents:
     adapter: claude-native
     sub_mode: subagent
     model: claude-opus-4-7
+    loads_bundle: wiki-ingest
     system_role_hint: "blueprint-wiki-ingester"
     sandbox: workspace-write
     capabilities: [wiki-ingest, claim-extraction]
@@ -202,6 +210,7 @@ agents:
     adapter: claude-native
     sub_mode: subagent
     model: claude-sonnet-4-6
+    loads_bundle: wiki-query
     system_role_hint: "blueprint-wiki-querier"
     sandbox: read-only
     capabilities: [wiki-query, synthesis]
@@ -214,6 +223,7 @@ agents:
     bridge_mode: design                # protocol 1 fallback; review when protocol >= 2
     sandbox: read-only
     model: gpt-5-codex
+    loads_bundle: truthsayer
     capabilities: [adversarial-review, spec-audit]
 
   codex-eval:
@@ -221,6 +231,7 @@ agents:
     bridge_mode: design                # upgrades to `review` once bridge protocol >= 2
     sandbox: read-only
     model: gpt-5-codex
+    loads_bundle: evaluator
     capabilities: [evaluate, claim-verification, reward-hacking-check]
 
   # Optional Codex executor — for commercial work where adversarial diversity
@@ -230,6 +241,7 @@ agents:
     bridge_mode: implement
     sandbox: workspace-write
     model: gpt-5-codex
+    loads_bundle: executor-commercial
     capabilities: [commercial-execute, code-write]
 
 # ---------------------------------------------------------------------------

@@ -10,7 +10,7 @@ also_needed_by:
   - meta_review
 status: stable
 version: 2.10
-last_reviewed: 2026-05-04
+last_reviewed: 2026-05-10
 extracted_from:
   source: SYSTEM-BLUEPRINT-v2.10.md
   sections: ["§25 Bridge adapter — Codex specifics", "§25 Sandbox flags do not imply host-local service access (v2.10)", "../claude-codex-orchestration/BRIDGE_REQUIREMENTS.md (authoritative external)"]
@@ -22,7 +22,7 @@ related:
   - 50-adapters/claude-native.md
   - 40-runtime/dispatch-shim.md
   - 40-runtime/bootstrap-and-degradation.md
-max_lines: 150
+max_lines: 160
 directives:
   must_count: 7
   should_count: 4
@@ -43,7 +43,9 @@ directives:
 | `fallback_protocol` | 1 (MVP — assumed when probe fails) |
 | `artifact_dir_root` | `../claude-codex-orchestration/codex_scaffold/runtime/codex-jobs/` |
 
-The codex-bridge adapter wraps the `codex-task-bridge` CLI (authoritative contract: `../claude-codex-orchestration/BRIDGE_REQUIREMENTS.md`). It is the first non-Claude adapter and the steady-state cross-family Evaluator + TruthSayer pairing for projects whose Executor is Claude.
+The codex-bridge adapter wraps the `codex-task-bridge` CLI. It is the first non-Claude adapter and the steady-state cross-family Evaluator + TruthSayer pairing for projects whose Executor is Claude.
+
+**Ownership (Model C, 2026-05-10).** This file is the *adapter slot* — the contract every codex-bridge implementation must satisfy. The *canonical implementation* of the slot lives in the sibling project `claude-codex-orchestration` (binary at `binary_path` above). That project owns: the `codex-task-bridge` CLI, the protocol-versioning + capability-discovery contract (`BRIDGE_REQUIREMENTS.md` — authoritative external spec for the wire format), and the six Claude-Code slash commands (`/codex-design`, `/codex-implement`, `/codex-review`, `/codex-status`, `/codex-result`, `/codex-list`) that target the bridge. KB-Orchestrator-Core owns: the role abstraction, the §25 dispatch shim, the verification ledger, and INV 9 / INV 10. Adopters wiring Codex into a KB-Orchestrator-Core deployment SHOULD start at `adoption-guides/codex-bridge-adapter.md`.
 
 ### Probe response
 
@@ -121,7 +123,7 @@ Per BRIDGE_REQUIREMENTS: `read-only`, `workspace-write`, `workspace-write --full
 
 `enforces_pre_action_facts: orchestrator-side`. The bridge has no in-process pre-tool callback. The orchestrator (claude-main) emits the §25-mandated 4-fact block as user-visible text immediately before each `codex-task-bridge run|start` invocation. This is the v2.9 PROPAGATION mechanism for adapters that cannot self-enforce.
 
-When bridge protocol ≥ 2 ships an in-process callback, this field flips to `true` and the per-dispatch shim is removed.
+The orchestrator-emitted-block enforcement is **permanent for this adapter slot**. Per `../claude-codex-orchestration/BRIDGE_REQUIREMENTS.md` § Non-goals, the bridge by design does NOT impose orchestration policy — no future protocol-2 in-process callback is planned. Adopters MUST treat orchestrator-side enforcement as the steady-state mechanism, not a temporary stopgap.
 
 ### Host-local service access (v2.10)
 
@@ -141,7 +143,8 @@ When bridge protocol ≥ 2 ships an in-process callback, this field flips to `tr
 
 ### Cross-references
 
-- Authoritative bridge contract: `../claude-codex-orchestration/BRIDGE_REQUIREMENTS.md`
+- Authoritative bridge contract (sibling project, canonical implementation): `../claude-codex-orchestration/BRIDGE_REQUIREMENTS.md`
+- Adopter wiring guide: `adoption-guides/codex-bridge-adapter.md`
 - Capability matrix: `50-adapters/capability-matrix.md`
 - v2.10 host-access degradation: `40-runtime/bootstrap-and-degradation.md`
 

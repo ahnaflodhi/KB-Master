@@ -14,7 +14,7 @@ related:
   - 10-pipeline/state-machine.md
   - 40-runtime/delegation-protocol.md
   - 40-runtime/verification-ledger.md
-max_lines: 210
+max_lines: 270
 directives:
   must_count: 0
   should_count: 0
@@ -193,6 +193,52 @@ INVARIANT 10: Pre-action fact presentation
   `policy:` in agents.config.yaml) is the load-time enforcement point —
   set to `false` only with documented justification recorded in the
   iteration's escalation.md.
+
+INVARIANT 11: Minimum-viable context per role (principle-centric)
+  Every dispatched role MUST load minimum-viable context — only what the
+  role needs to fulfill its blueprint contract — and MUST NOT load the
+  canonical monolith (`SYSTEM-BLUEPRINT.md`) for runtime work. The
+  monolith is a compiled view of Layer-2 used for archival and human
+  reading; runtime ingest targets `INDEX.md` plus the role-specific
+  context manifest.
+
+  PRINCIPLE-CENTRIC, NOT MECHANISM-CENTRIC: this invariant binds the
+  outcome (bounded role context, no monolith load), not the selection
+  mechanism. The framework's CURRENT recommended mechanism is
+  `bundles/<role>.yaml` — a curated, hand-authored, integrity-checked
+  manifest enumerating which Layer-2 files the role consumes. Adopters
+  MAY use bundles verbatim (the default), curate their own manifests,
+  or substitute better mechanisms (semantic context routing, dynamic
+  composition, RAG-style retrieval) as long as INV 11 holds: minimum-
+  viable, no monolith, recorded in the dispatch ledger.
+
+  WHY mechanism-independent: model evolution (smaller / larger context
+  windows), capability evolution (bridge protocol-2 `--output-schema`
+  enabling pre-shaped context), orchestration evolution (MCP-native,
+  distributed agent meshes), and retrieval evolution (semantic routing)
+  are all expected to introduce better mechanisms over time. Binding
+  the principle (not bundles specifically) lets the framework absorb
+  those without breaking the contract.
+
+  ENFORCEMENT: the DISPATCH ledger row at `commands/_delegate.md` Step 4
+  records `context_sources` (the list of files passed into the dispatch
+  envelope, plus the selection mechanism used). The CONSUME row at
+  Step 10 audits this against INV 11 — `SYSTEM-BLUEPRINT.md` in
+  `context_sources` is a hard fail. For the bundle mechanism specifically,
+  `tools/build-bundle.sh --check` provides supplementary documentation-
+  integrity validation (the manifest itself is internally consistent) —
+  this is bundle hygiene, not INV 11 enforcement.
+
+  CARVE-OUT: `meta_review` and `apply_meta` MAY load wider context
+  (including the monolith if it materially aids harness audit), since
+  these roles operate on the framework itself rather than on a single
+  iteration. Their wider load is recorded in `context_sources` for
+  audit traceability.
+
+  SCOPE: applies to every dispatched role, every adapter, every adopter.
+  Single-family bootstrap deployments inherit it unchanged — INV 11 has
+  no equivalent of INV 1.A's single-family carve-out, because monolith-
+  avoidance is achievable without a second agent family.
 ```
 
 ---

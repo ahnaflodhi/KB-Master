@@ -6,13 +6,19 @@ Source of truth at runtime: this file. Source of design intent: `~/.claude/plans
 
 ## What a bundle is
 
-A **bundle** is the explicit list of Layer-2 files that one agent loads into context when fulfilling one role. It exists because:
+A **bundle** is an explicit, hand-curated list of Layer-2 files that one agent loads into context when fulfilling one role.
+
+Bundles are the framework's **current recommended implementation** of `INVARIANT 11` (minimum-viable context per role; no canonical monolith for runtime work — see `00-overview/invariants.md`). INV 11 binds the *outcome*: every dispatched role MUST load minimum-viable context and MUST NOT load `SYSTEM-BLUEPRINT.md` for runtime work, with the load recorded in the DISPATCH ledger's `context_sources` field. Bundles are today's mechanism for satisfying that outcome — they are not the only legal mechanism.
+
+They exist because:
 
 - Loading the 2,464-line monolith for every dispatch costs ~70k tokens and triggers lost-in-the-middle attention degradation (per blueprint §20).
 - A planner does not need the bridge adapter spec; an evaluator does not need the wiki ingester contract.
-- Without an explicit list, every agent ends up loading more than it needs (re-monolithification by accretion).
+- Without a recommended manifest per role, every agent ends up loading more than it needs (re-monolithification by accretion).
 
-Bundles are **committed but auto-regenerable.** `tools/build-bundle.sh <role>` derives the membership from frontmatter (`audience`, `also_needed_by`, `purpose`); `tools/build-bundle.sh --check` flags drift between the committed bundle and what the deriver would produce today.
+Adopters MAY use bundles verbatim (the framework's default), curate their own manifests, or substitute a better mechanism (semantic context routing, dynamic composition, RAG-style retrieval) — provided INV 11 holds. The framework does not bake in a specific selection mechanism; it binds the principle.
+
+Bundles are **committed but auto-regenerable.** `tools/build-bundle.sh <role>` derives the membership from frontmatter (`audience`, `also_needed_by`, `purpose`); `tools/build-bundle.sh --check` validates bundle documentation integrity (the manifest is internally consistent — every cited path exists, every audience field matches). This is bundle hygiene, NOT INV 11 enforcement — INV 11 is enforced by the orchestrator at `commands/_delegate.md` Step 10 CONSUME via the DISPATCH ledger row's `context_sources` field.
 
 ## Schema
 

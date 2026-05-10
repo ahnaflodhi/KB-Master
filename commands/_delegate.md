@@ -91,7 +91,9 @@ orchestrator's context; step 11 mutates pipeline state.
 - Assemble the prompt to send to the agent. Sources:
   - The role-bearing slash command's blueprint-derived instruction body.
   - `inputs[]` file contents (already on disk; agent will read from there).
+- **Load minimum-viable context per INV 11.** The framework's recommended mechanism is `bundles/<role>.yaml` — load every file under the bundle's `loads:`, plus `optional:` files that exist, plus `adapter_specific:` files matching the resolved adapter. Adopters MAY substitute a different mechanism (semantic context routing, dynamic composition, RAG-style retrieval) provided INV 11 holds: minimum-viable, no `SYSTEM-BLUEPRINT.md`, recorded in the DISPATCH ledger row's `context_sources` field. The CARVE-OUT in INV 11 (`meta_review`, `apply_meta` may load wider context) applies here.
 - **Apply semantic-isolation** (§19): if any portion of `prompt` was extracted from a previously-agent-written file (e.g. quoting an Objective field from `spec.md`), wrap that portion in a delimited block tagged `<extracted-data>` so the receiving agent treats it as data, not instructions.
+- Record the resolved `context_sources` (list of file paths actually loaded, plus the selection mechanism used — e.g. `"bundles/truthsayer.yaml"` or `"semantic-routing-v1"`) for the Step 4 DISPATCH ledger row.
 - Compute `prompt_hash = sha256(prompt)`.
 - Determine effective sandbox: `sandbox_override` ?? `agent_spec.sandbox`.
 - Determine effective model: `model_override` ?? `agent_spec.model`.
@@ -106,7 +108,7 @@ orchestrator's context; step 11 mutates pipeline state.
 - Receive `job_id`.
 - **Write DISPATCH ledger entry** to `pipeline/verification-ledger.jsonl`:
   ```jsonl
-  {"ts":"<ISO-8601>","event":"dispatch","iter":"<iter_id>","role":"<role>","agent_id":"<agent_name>","adapter":"<adapter_name>","prompt_hash":"sha256:<hex>","sandbox":"<value>","model":"<value>","config_revision":<int>,"job_id":"<job_id>","expected_schema":"<schema_name>"}
+  {"ts":"<ISO-8601>","event":"dispatch","iter":"<iter_id>","role":"<role>","agent_id":"<agent_name>","adapter":"<adapter_name>","prompt_hash":"sha256:<hex>","sandbox":"<value>","model":"<value>","config_revision":<int>,"job_id":"<job_id>","expected_schema":"<schema_name>","context_sources":["bundles/<role>.yaml","<each-file-loaded>",...],"context_selection_mechanism":"<bundle|semantic-routing|dynamic-composition|other>"}
   ```
 
 ### Step 5 — AWAIT

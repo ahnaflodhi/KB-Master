@@ -13,7 +13,7 @@ Phase 6 exit criterion #8 (per `~/.claude/plans/crispy-sniffing-conway.md`):
 
 > **5 consecutive iterations of any agent role complete without reading `SYSTEM-BLUEPRINT.md`** (verified by ledger inspection over the soak period).
 
-Operationalised: during the 5-day window, every dispatched role MUST load only its bundle (`bundles/<role>.yaml`) and the files that bundle names. If any verification-ledger entry shows a `prompt_hash` derived from monolith content (or any tool call reads `SYSTEM-BLUEPRINT.md`), the soak fails and restarts.
+Operationalised against `INVARIANT 11` (minimum-viable context per role; principle-centric — see `00-overview/invariants.md`): during the 5-day window, every dispatched role MUST satisfy INV 11. The verification mechanism is the DISPATCH ledger row's `context_sources` field at `pipeline/verification-ledger.jsonl` — `SYSTEM-BLUEPRINT.md` appearing in any row's `context_sources` is a hard fail. The recommended selection mechanism is `bundles/<role>.yaml` (the framework's default); adopters using a different mechanism (semantic routing, dynamic composition) record it in the row's `context_selection_mechanism` field. The soak audits the *outcome* (no monolith load, recorded), not the *mechanism* (bundle vs other) — meta-review may flag mechanism drift across iterations but does not fail the soak on it. If any verification-ledger entry violates INV 11, the soak fails and restarts.
 
 ## Pre-soak preconditions (all required, all already satisfied as of 2026-05-08)
 
@@ -21,9 +21,9 @@ Operationalised: during the 5-day window, every dispatched role MUST load only i
 2. ✅ `tools/verify-cross-refs.sh` exits 0.
 3. ✅ `tools/build-bundle.sh --check` exits 0.
 4. ✅ `tools/build-blueprint.sh` writes `SYSTEM-BLUEPRINT.candidate.md`.
-5. ✅ `agents.config.yaml` has `schema_version: 2`; every agent declares `loads_bundle: <name>`.
+5. ✅ `agents.config.yaml` has `schema_version: 3` (was 2 at Phase-6b initiation; bumped to 3 for INV 1.A `family:` field requirement); every agent declares `loads_bundle: <name>` AND `family: <name>`.
 6. ✅ `CLAUDE.md` and `README.md` name `INDEX.md` as the runtime entry, not `SYSTEM-BLUEPRINT.md`.
-7. ✅ `commands/_delegate.md` Step 3 (PREPARE) consumes a bundle, not the monolith.
+7. ✅ `commands/_delegate.md` Step 3 (PREPARE) loads minimum-viable context per INV 11. Bundles are the framework's recommended selection mechanism; the shim records `context_sources` + `context_selection_mechanism` in the Step 4 DISPATCH ledger row for INV 11 enforcement at Step 10 CONSUME.
 8. ✅ All 11 role-bearing slash commands and the `_delegate` shim exist.
 9. ✅ `pipeline/verification-ledger.jsonl` carries the full restructure dispatch+consume audit trail.
 10. ⏳ This soak completes; only then does criterion #8 turn green.
@@ -63,7 +63,7 @@ Operationalised: during the 5-day window, every dispatched role MUST load only i
 2. Run `tools/build-blueprint.sh --write` — overwrites `SYSTEM-BLUEPRINT.md` with the candidate; backup snapshot saved to `.SYSTEM-BLUEPRINT.pre-regen.<UTC-ts>.md`.
 3. `mv SYSTEM-BLUEPRINT.candidate.md /tmp/` (or `rm` if the diff is satisfactory) — the candidate has served its role.
 4. Tag the repo `v3.0.0`. Add the `v3.0` comprehensive CHANGELOG entry (criterion #10).
-5. Enable the CI gate in `.github/workflows/ci.yml` that blocks direct edits to `SYSTEM-BLUEPRINT.md` outside of `tools/build-blueprint.sh --write` runs.
+5. Confirm the CI `monolith-edit-guard` job in `.github/workflows/ci.yml` is active (it was enabled at Phase-6b initiation, not at day-5 swap — this step is verification, not enablement). The job already blocks direct edits to `SYSTEM-BLUEPRINT.md` outside of `tools/build-blueprint.sh --write` runs.
 
 **On any failure during the soak — abort:**
 - Update `pipeline/soak-state.json` `status` to `"failed"`, `failed_at` to current UTC, `notes` describing the failure mode.

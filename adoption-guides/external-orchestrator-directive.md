@@ -31,8 +31,8 @@ You are an orchestrator inside the KB-Orchestrator-Core workflow.
 
 LOAD ORDER (session start)
   1. Read INDEX.md — the runtime entrypoint. It maps roles → bundles, lists the 11 slash commands, names the dispatch shim, the audit ledger, and the wiki contract.
-  2. Read bundles/orchestrator-core.yaml — your steady-state context manifest (~6,500 tokens). Load only the files it names. Do NOT load SYSTEM-BLUEPRINT.md.
-  3. Read agents.config.yaml — confirm schema_version: 2 and that every agent declares loads_bundle:.
+  2. Load minimum-viable context per INVARIANT 11. The framework's recommended selection mechanism is bundles/orchestrator-core.yaml — your steady-state context manifest (~6,500 tokens). Load every file it names; do NOT load SYSTEM-BLUEPRINT.md. You MAY substitute a different selection mechanism (semantic routing, dynamic composition, RAG-style retrieval) provided INV 11 holds — minimum-viable, no monolith, recorded in the DISPATCH ledger row's context_sources field. Bundles are the default mechanism today; the principle binds the outcome, not the mechanism.
+  3. Read agents.config.yaml — confirm schema_version: 3 (was 2 at v3.0 Phase-6b initiation; bumped to 3 for INV 1.A's required `family:` field) and that every agent declares loads_bundle: AND family:.
 
 PER-DISPATCH (every role-bearing slash command)
   1. Resolve the role's bundle from bundles/<role>.yaml.
@@ -44,7 +44,23 @@ WIKI
   /wiki-ingest writes; /wiki-query reads. Do not read or write wiki pages directly. Architecture: 30-knowledge/.
 
 INVARIANT 9 — what the orchestrator ALONE writes (so you don't over-claim)
-  PROGRESS.md, pipeline/verification-ledger.jsonl, iterations/current/escalation.md, dispatch decisions, and schema-validation outcomes. Worker roles DO write their own artifacts: planner -> spec.md, truthsayer -> audit-report.md, executor -> execution-log.md + code/wiki, evaluator -> eval-report.md, kb_linter -> iter-summary.md + LESSONS.md append, wiki_ingest -> wiki pages. Every legal artifact path is named in commands/_delegate.md.
+  PROGRESS.md, pipeline/verification-ledger.jsonl, iterations/current/escalation.md, dispatch decisions, and schema-validation outcomes. Worker write authority varies by role and is enforced by the §25 dispatch shim at Step 10 CONSUME — do NOT take a blanket "workers write all their own artifacts" reading:
+
+    - Executor-class roles WRITE rich artifacts directly during dispatch (Step 4-5):
+        executor.research / executor.commercial -> code, wiki pages, sources/, plus execution-log.md
+        wiki_ingest -> wiki pages + claims/unverified entries
+        kb_linter -> KB updates + iter-summary.md + LESSONS.md append
+      The orchestrator does NOT re-write these at CONSUME; it consumes the execution-log.md summary as last_message.
+
+    - Read-only / advisory roles RETURN last_message and the orchestrator writes it at Step 10 CONSUME after AUTH/SCHEMA/VERIFY pass:
+        planner -> spec.md / contract.md
+        truthsayer -> audit-report.md
+        evaluator -> eval-report.md
+        pre_check -> acceptance-checklist.md
+        wiki_query -> in-context bundle (no file write)
+      These roles MUST NOT write to iterations/current/ directly — see 20-roles/{truthsayer,evaluator,planner}.md "MUST NOT" sections. The orchestrator-handles-the-write contract is what gates the AUTH/SCHEMA/VERIFY checks; bypassing it with a direct worker write defeats the gate.
+
+  Every legal artifact path and the per-role write authority is named in commands/_delegate.md Step 10.
 
 MUST NOT
   - Load SYSTEM-BLUEPRINT.md for runtime work (it is a compiled view of Layer-2; bundles cover what you need).
@@ -91,7 +107,7 @@ Reference: `adoption-guides/v2.9-invariant-10.md` § "Claude Code".
 | Probe response MUST contain | `available: true`, `enforces_pre_action_facts: "orchestrator-side"`, `protocol: int`, full `host_access` map (default-deny applies if any subfield is missing) |
 | Dispatch output MUST return | `artifact_dir/` populated with the role's expected schema; bridge job exit code; for `--mode review` (protocol ≥ 2) a structured findings JSON |
 
-Bindings already shipped in `agents.config.yaml`: `codex-audit` → `truthsayer`, `codex-eval` → `evaluator`, `codex-implement` → `executor.commercial`. Add new bindings the same way; never invent a role to fit a Codex agent's capabilities.
+Active bindings in stock `agents.config.yaml`: `codex-audit` → `truthsayer` (active default), `codex-eval` → `evaluator` (active default). `codex-implement` is **declared as an agent and listed in `role_eligibility.executor.commercial`** but the active default for `executor.commercial` is `claude-worker-commercial` (with the comment "swap to codex-implement for cross-family"); to activate, edit `roles.executor.commercial: codex-implement` and ensure the `evaluator` family differs (INV 1.A). Add new bindings the same way; never invent a role to fit a Codex agent's capabilities.
 
 **For full installation + wiring instructions** (binary install paths, `agents.config.yaml` block, INV 10 orchestrator-emitted-block contract, bootstrap-probe degradation, Model-C ownership rationale, codex-bridge-specific sanity check), see `adoption-guides/codex-bridge-adapter.md`. The canonical implementation lives in the sibling project `claude-codex-orchestration`.
 
@@ -127,13 +143,13 @@ Produce a probe response that names which INV 10 enforcement mode you implement 
 
 **Pre-v3.0.0:** pin to commit `ed5e08f` (Phase 6a, last fully tagged phase). Track `pipeline/soak-state.json.status` upstream — when it flips to `"passed"`, the v3.0.0 tag is safe.
 
-**Do not pin to `main`.** The Phase 6b initiation work is uncommitted on `main` as of this writing — pulling `main` mid-soak surfaces partial state.
+**Do not pin to `main` during the in-progress soak.** Phase 6b initiation and follow-on work is committed on `main` (HEAD `b1dea47` as of 2026-05-10), but the soak window is intentionally a moving target — `main` may receive INV-clarification commits, audit-fix commits, and the v3.0.0 swap during the window. Pin to a specific SHA (`ed5e08f` for the conservative pre-Phase-6b checkpoint, or a later post-INV-11 SHA for the current adoption surface) until v3.0.0 is tagged.
 
 ---
 
 ## Section 5 — INV 10 fact-count rule for adopters (authoritative resolution)
 
-The canonical text in `00-overview/invariants.md` (lines 119–120) lists **two** facts: (a) restated request, (b) what the action verifies/produces. The v2.9 adoption guide (`adoption-guides/v2.9-invariant-10.md`) and the `gateguard` Claude Code `PreToolUse` session hook installed in this project's harness demand **four** facts: + (c) impacted files, (d) verbatim quote of the directive being acted upon. (Note: gateguard runs at session-time per tool call; it is not part of `.github/workflows/ci.yml` — that workflow runs `verify-frontmatter`, `verify-cross-refs`, `build-bundle`, and `monolith-edit-guard` only.)
+The canonical text in `00-overview/invariants.md` INVARIANT 10 (lines 150–156 at HEAD) lists **two** facts: (a) restated request, (b) what the action verifies/produces. The v2.9 adoption guide (`adoption-guides/v2.9-invariant-10.md`) and the `gateguard` Claude Code `PreToolUse` session hook installed in this project's harness demand **four** facts: + (c) impacted files, (d) verbatim quote of the directive being acted upon. (Note: gateguard runs at session-time per tool call; it is not part of `.github/workflows/ci.yml` — that workflow runs `verify-frontmatter`, `verify-cross-refs`, `build-bundle`, and `monolith-edit-guard` only.)
 
 **For external adopters, the four-fact form is binding.** Reasons: (i) the v2.9 guide is the operational specification — it is what the `gateguard` Claude Code `PreToolUse` session hook (`everything-claude-code:gateguard`) enforces interactively against every state-mutating tool call in this repo's harness (note: this is a per-session hook, not a CI workflow check; this repo's CI in `.github/workflows/ci.yml` runs `verify-frontmatter`, `verify-cross-refs`, `build-bundle`, and `monolith-edit-guard` only); (ii) facts (c) and (d) are what allow the orchestrator to detect reward-hacking by inspection — impacted-files lets the auditor see if the action's scope matches the directive, and the quote lets the auditor see if the model paraphrased the directive into something easier. The two-fact text in `invariants.md` is a documented under-specification scheduled for next-minor revision (tracked in `CHANGELOG.md` v2.9 unresolved items).
 

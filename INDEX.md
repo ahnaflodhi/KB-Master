@@ -48,6 +48,8 @@ See `00-overview/invariants.md`. Inv 9 (orchestrator non-delegable) and Inv 10 (
 
 Worst-case bundle is ~7k tokens vs. the monolith's ~70k (10× reduction). Steady-state per-role is ~3.5k tokens (20× reduction). See `30-knowledge/three-tier-memory.md` for why.
 
+**Bundles are the framework's recommended implementation of `INVARIANT 11` (minimum-viable context per role; no monolith load for runtime work) — not the contract itself.** INV 11 binds the outcome (bounded context, no monolith, recorded in the DISPATCH ledger's `context_sources`); the bundle file is today's mechanism for satisfying it. Adopters MAY use bundles verbatim, curate their own manifests, or substitute better mechanisms (semantic context routing, dynamic composition, RAG-style retrieval) as long as INV 11 holds. `tools/build-bundle.sh --check` validates bundle documentation integrity (the manifest is internally consistent), not INV 11 enforcement — that is the orchestrator's job at Step 10 CONSUME.
+
 ## The 11 slash commands
 
 All compose `commands/_delegate.md` (orchestrator-only, never user-invokable):

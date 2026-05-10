@@ -141,11 +141,28 @@ If your harness can only enforce the two-fact form, your adapter probe MUST repo
 
 ---
 
+## Section 6 — Reciprocal upstream acknowledgment (Model C)
+
+Once your project has adopted this framework, add a top-level "Upstream framework" section to your project's `CLAUDE.md` (or harness equivalent: `AGENTS.md`, `GEMINI.md`, `README.md`, MCP `initialize` resource) naming KB-Orchestrator-Core as the upstream framework that owns the role abstraction, the §25 dispatch shim, the verification ledger, the capability matrix, and INV 9 / INV 10 enforcement.
+
+This is the **Model C reciprocal acknowledgment** pattern. It serves three purposes:
+
+1. **Discoverability** — future readers of your project (humans or agents) immediately see it is a downstream consumer of a larger framework, not a standalone harness.
+2. **Sync rule** — your `CLAUDE.md` should state: changes to KB-Orchestrator-Core's role abstraction, dispatch envelope, or verification-ledger schema require updating your project's slash commands / prompt envelopes accordingly. Conversely, any local concept that overlaps an upstream-owned concept (role, dispatch shim, ledger, INV 9/10, capability matrix) MUST defer to upstream — no local redefinition.
+3. **Boundary precedence** — if your project has its own intra-project boundary contract (e.g., "agent A writes here, agent B writes there"), the upstream-framework boundary takes precedence: nothing in your project may redefine a concept KB-Orchestrator-Core owns.
+
+For a concrete reference example, see the sibling project `claude-codex-orchestration/CLAUDE.md` § 0 "Upstream framework" — it ships an owned-by-upstream / owned-by-this-repo split table, the operating rules, and the bidirectional sync contract. Mirror that structure (adapt the rows to your project's actual owned scope) in your own `CLAUDE.md`. The same project's `BRIDGE_REQUIREMENTS.md` § "Upstream framework" applies the pattern to a contract-level spec file (rather than a project-level CLAUDE.md) — use whichever placement matches your project's primary entry document.
+
+The minimum acceptable acknowledgment is a single sentence: *"This project is a downstream consumer of KB-Orchestrator-Core (`<vendoring-path-or-url>`); it owns `<your-concrete-scope>`; upstream owns roles, dispatch, ledger, INV 9 / INV 10."* Anything more is value-add for future readers.
+
+---
+
 ## Cross-references
 
 - `INDEX.md` — runtime entrypoint named by the Directive
 - `commands/_delegate.md` — the 11-step shim, canonical step names + ledger write timing
 - `adoption-guides/v2.9-invariant-10.md` — INV 10 per-harness enforcement (binding for the four-fact form)
+- `claude-codex-orchestration/CLAUDE.md` § 0 + `BRIDGE_REQUIREMENTS.md` § Upstream framework — concrete reference for Section 6 reciprocal acknowledgment
 
 ---
 

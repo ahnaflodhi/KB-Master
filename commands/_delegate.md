@@ -57,7 +57,8 @@ orchestrator's context; step 11 mutates pipeline state.
 
 - Read `agents.config.yaml` (cached for the session; re-read on mtime change or `/reload-agents`).
 - Validate `schema_version` is supported. If not → escalate `config-schema-unsupported`.
-- Resolve `role` → `agent_name` via `roles:` map. Unassigned role → escalate `role-unassigned`.
+- Resolve `role` → `default_agent_name` via `roles:` map. Unassigned role → escalate `role-unassigned`.
+- **Resolve override (principle-centric per INV 1.A):** if the calling slash command passed `--agent <name>` (user-directed) OR the orchestrator self-assesses a non-default selection (e.g., to satisfy cross-family on a non-default executor binding), verify the chosen agent appears in `role_eligibility.<role>`. Reject with `error: agent-not-eligible-for-role` if missing. The effective `agent_name = override ?? default_agent_name`. The cross-family check below runs on the effective pairing, not the static `roles:` defaults.
 - Resolve `agent_name` → `agent_spec` via `agents:` map. Missing agent → escalate `agent-missing`.
 - Resolve `agent_spec.adapter` → `adapter_spec` via `adapters:` map. Missing adapter → escalate `adapter-missing`.
 - **Invariant 9 enforcement**: if `role == orchestrator`, refuse with `error: orchestrator-non-delegable`. The orchestrator role is fulfilled by claude-main directly, never via this shim.
@@ -190,7 +191,7 @@ If all sub-checks PASS: `verification_verdict = PASS`.
 
 ## Per-role wiring summary
 
-This table is informational — the source of truth is `agents.config.yaml`. It shows the typical mapping the orchestrator dispatches when the default config is active.
+This table is informational — the source of truth is `agents.config.yaml`. It shows the **default** agent the orchestrator dispatches when no override is specified. Per INV 1.A (principle-centric), the user MAY override per dispatch with `--agent <name>` and the orchestrator MAY override based on its own assessment, provided (a) the chosen agent appears in `agents.config.yaml.role_eligibility.<role>` AND (b) the cross-family validator passes on the effective pairing. The defaults below are NOT hard bindings — same-family auditing is the failure mode INV 1.A prevents, and the eligibility list is the surface where future families (Mistral / Cursor / Devstral / etc.) plug in without rewriting this table.
 
 | Calling command | Role | Default agent | Adapter | Sandbox | Output written to |
 |---|---|---|---|---|---|

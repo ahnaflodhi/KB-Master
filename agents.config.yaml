@@ -258,32 +258,72 @@ agents:
     capabilities: [commercial-execute, code-write]
 
 # ---------------------------------------------------------------------------
-# 3. ROLES — blueprint role → agent name. The active assignment.
+# 3. ROLES — default agent per role. NOT hard bindings (principle-centric, INV 1.A).
 # ---------------------------------------------------------------------------
-# Every role from §6 must be assigned to exactly one agent (or one per project
-# subtype where the role splits, e.g. executor:research vs executor:commercial).
-# An unassigned role fails fast at orchestrator startup.
+# `roles:` names the DEFAULT agent the orchestrator dispatches when no
+# override is specified. These are defaults, not hard bindings — per INV 1.A
+# the orchestrator (or user via `--agent <name>` flag) MAY override per
+# dispatch, provided the chosen agent appears in the corresponding
+# `role_eligibility:` list (see §3.5 below) AND the cross-family validator
+# passes on the effective pairing.
 #
-# To swap an agent for a role: change the value here. No code edits required.
+# Loose-coupling rationale: the framework binds families to principles
+# (Generator ≠ Evaluator across families), not specific agent names to
+# specific roles. Future agent families (Mistral / Cursor / Devstral / etc.)
+# plug in by being declared in `agents:` and added to whichever eligibility
+# lists they qualify for — zero validator code edits.
+#
+# To swap the default agent for a role: change the value here.
+# To extend eligibility for overrides: add to §3.5 below.
 # To A/B test: temporarily duplicate a role under `experiments` (see §25).
 
 roles:
   orchestrator: claude-main          # NON-DELEGABLE (Invariant 9). Must be claude-main.
 
-  planner: claude-worker-planner
-  truthsayer: codex-audit            # Codex for adversarial-family diversity
+  planner: claude-worker-planner     # default; eligibility in §3.5
+  truthsayer: codex-audit            # default; cross-family with planner per INV 1.A
   pre_check: claude-worker-precheck
 
   executor:
-    research: claude-worker-research       # any executor agent OK; INV 1.A guarantees evaluator family ≠ executor family
-    commercial: claude-worker-commercial   # any executor agent OK; orchestrator/user picks per task; validator enforces cross-family
+    research: claude-worker-research       # default; orchestrator/user can override per dispatch
+    commercial: claude-worker-commercial   # default; orchestrator/user can override per dispatch
 
-  evaluator: codex-eval              # different family from executor → diversity
+  evaluator: codex-eval              # default; cross-family with executor per INV 1.A
   kb_linter: claude-worker-kblint
   wiki_ingest: claude-worker-wiki-ingest
   wiki_query: claude-worker-wiki-query
-  meta_review: claude-worker-planner   # reuses Claude planner config — read-only meta work
-  apply_meta: claude-main              # mutates CLAUDE.md/commands — orchestrator-only by policy
+  meta_review: claude-worker-planner   # default; SHOULD rotate per sprint to avoid same-family auditing same-family work
+  apply_meta: claude-main              # mutates CLAUDE.md/commands — orchestrator-only by INV 9
+
+# ---------------------------------------------------------------------------
+# 3.5 ROLE_ELIGIBILITY — agents that may fulfill each role (override targets).
+# ---------------------------------------------------------------------------
+# Agents listed here are valid `--agent <name>` override targets. The
+# orchestrator picks the default from `roles:` above; a user override or
+# orchestrator self-assessment can promote any other listed agent. The
+# cross-family validator (INV 1.A) runs on the EFFECTIVE pairing AFTER
+# overrides resolve — it does not pre-filter eligibility. Listing
+# same-family agents is allowed; the validator catches violations at
+# dispatch time per `validation.on_cross_family_violation`.
+#
+# Adding a new family (Mistral / Cursor / Devstral): declare the agent in
+# `agents:` with `family: <new>`, then add the agent name to whichever
+# eligibility lists it can fulfill. The validator and shim require zero
+# code edits — they bind families, not agent names.
+
+role_eligibility:
+  planner: [claude-worker-planner]                                   # add e.g. mistral-planner here when family lands
+  truthsayer: [codex-audit]                                          # cross-family alternative to claude-worker-planner
+  pre_check: [claude-worker-precheck]
+  executor:
+    research: [claude-worker-research]                               # add codex-implement when host_access ships
+    commercial: [claude-worker-commercial, codex-implement]          # both eligible; orchestrator picks per task; validator enforces cross-family vs evaluator
+  evaluator: [codex-eval]                                            # add a claude-worker-eval here to enable codex-implement as executor (validator otherwise fails)
+  kb_linter: [claude-worker-kblint]
+  wiki_ingest: [claude-worker-wiki-ingest]
+  wiki_query: [claude-worker-wiki-query]
+  meta_review: [claude-worker-planner]                               # SHOULD include a non-dominant-executor-family agent at sprint end
+  apply_meta: [claude-main]                                          # NON-DELEGABLE per INV 9; never extend this list
 
 # ---------------------------------------------------------------------------
 # 4. VALIDATION — orchestrator's verification policy for delegated output.

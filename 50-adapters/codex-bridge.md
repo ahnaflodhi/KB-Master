@@ -10,7 +10,7 @@ also_needed_by:
   - meta_review
 status: stable
 version: 2.10
-last_reviewed: 2026-05-10
+last_reviewed: 2026-05-12
 extracted_from:
   source: SYSTEM-BLUEPRINT-v2.10.md
   sections: ["§25 Bridge adapter — Codex specifics", "§25 Sandbox flags do not imply host-local service access (v2.10)", "../claude-codex-orchestration/BRIDGE_REQUIREMENTS.md (authoritative external)"]
@@ -49,22 +49,24 @@ The codex-bridge adapter wraps the `codex-task-bridge` CLI. It is the first non-
 
 ### Probe response
 
-Per BRIDGE_REQUIREMENTS bootstrap rule: probe `version` first; non-zero exit → treat as protocol 1. Protocol ≥ 2 → call `capabilities --json` for the supported surface. The orchestrator does NOT call non-MVP bridge subcommands (`--mode review`, `raw`, `--output-schema`, `--json-events`) unless the probe confirms them.
+Per BRIDGE_REQUIREMENTS bootstrap rule: probe `version` first; non-zero exit → treat as protocol 1. Protocol ≥ 2 → call `capabilities --json` for the supported surface. The orchestrator does NOT call non-shipped bridge surface (`--mode review`, `raw`, `resume`, `--json-events`, `--sandbox`/`--full-auto` first-class passthrough) unless the probe confirms them.
 
 ```yaml
-# MVP (protocol 1) — current
+# Protocol 2 — current (canonical bridge at ../claude-codex-orchestration/codex_scaffold/bin/codex-task-bridge)
 available: true
-protocol: 1
-capabilities: ["start", "run", "status", "tail", "result", "list", "help"]
+protocol: 2
+capabilities: ["start", "run", "status", "tail", "result", "list", "help", "version", "capabilities"]
+passthroughs_advertised: ["--model", "--output-schema"]
+modes_advertised: ["design", "implement"]
 enforces_pre_action_facts: orchestrator-side    # bridge has no in-process callback
 host_access:
   loopback_tcp: false                           # Stage-4 evidence — see below
   unix_sockets: false
 pre_action_fact_mechanism: orchestrator-emitted-block
 cached_protocol_probe:
-  protocol: 1
-  probed_at: 2026-05-04
-  notes: "version subcommand not implemented; capabilities --json not yet shipped"
+  protocol: 2
+  probed_at: 2026-05-12
+  notes: "protocol 2 shipped 2026-05-12: version + capabilities --json probes live; --output-schema passthrough emits output.json artifact; meta.env carries protocol + bridge_subcommand + terminal finished_at + exit_code; error-contract slugs invalid_input (exit 2) + unsupported_capability (exit 3) shipped. Still planned: --mode review, raw, resume, --json-events, --sandbox first-class, codex_exec_failure error-prefix slice."
 ```
 
 ### Dispatch contract
@@ -87,7 +89,7 @@ Argument mapping:
 | `sandbox` | Passed verbatim as `--sandbox <value>` |
 | `model` | Passed via `--model <id>` (currently `gpt-5.4` default) |
 | `inputs[]` | File paths in the prompt; bridge reads them via Codex's filesystem access |
-| `expected_schema` | Validated client-side by `_delegate.md` Step 8 (no bridge `--output-schema` in MVP) |
+| `expected_schema` | Schema validation is client/orchestrator-side (`_delegate.md` Step 8). Bridge `--output-schema FILE` passthrough shipped 2026-05-12 (protocol 2): when set, the bridge forwards the schema file to Codex and copies `last_message.txt` to `<job_dir>/output.json`. The bridge does NOT validate JSON or schema conformance — `output.json` presence means the directive was forwarded and a final message captured, not that the artifact is valid. Consumers must validate before use. |
 
 ### Result contract
 
@@ -103,7 +105,7 @@ Per BRIDGE_REQUIREMENTS job-artifact contract — files under `<job_dir>/`:
 | `stdout.log`, `stderr.log` | Captured streams |
 | `last_message.txt` | Final agent message — **the orchestrator's CONSUME source** |
 | `events.jsonl` | Iff `--json-events` set (planned, protocol ≥ 2) |
-| `output.json` | Iff `--output-schema` set (planned, protocol ≥ 2) |
+| `output.json` | Iff `--output-schema` set (shipped protocol 2, 2026-05-12); raw copy of `last_message.txt`, not bridge-validated for JSON or schema conformance |
 
 Artifact file names are part of the public contract; the bridge MUST NOT rename them within a protocol version. The orchestrator computes `output_hash = sha256(last_message.txt)` for the consume ledger row's AUTH gate.
 

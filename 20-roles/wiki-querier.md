@@ -14,7 +14,7 @@ also_needed_by:
   - meta_review
 status: stable
 version: 2.10
-last_reviewed: 2026-05-04
+last_reviewed: 2026-06-03
 extracted_from:
   source: SYSTEM-BLUEPRINT-v2.10.md
   sections: ["§6 Wiki Querier", "§20 Three-Tier Memory Model", "§11 typed relationships in wiki frontmatter"]
@@ -101,8 +101,8 @@ Tier escalation is one-way per query — the Querier MUST NOT re-issue the same 
 
 ### Cross-references
 
-- Three-tier model: SYSTEM-BLUEPRINT.md §20.
-- Typed relationships: SYSTEM-BLUEPRINT.md §11.
+- Three-tier model: `30-knowledge/three-tier-memory.md`.
+- Typed relationships: `30-knowledge/wiki-architecture.md`.
 - Sibling: `20-roles/wiki-ingester.md` (write-side complement).
 
 ---

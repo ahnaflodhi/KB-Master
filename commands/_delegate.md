@@ -11,7 +11,7 @@ plumbing, and so adding a new agent or adapter requires zero edits to the
 role-bearing commands.
 
 This file is the canonical specification of the dispatch contract defined in
-`SYSTEM-BLUEPRINT.md` §25. The orchestrator (`claude-main`) is the only entity
+`40-runtime/dispatch-shim.md`. The orchestrator (`claude-main`) is the only entity
 authorized to execute this dispatch path. Invariant 9 forbids any other agent
 from running it.
 

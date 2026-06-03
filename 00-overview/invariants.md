@@ -5,7 +5,7 @@ purpose: invariant
 audience: [orchestrator, planner, truthsayer, pre_check, executor, evaluator, kb_linter, wiki_ingest, wiki_query, meta_review, apply_meta]
 status: stable
 version: 3.0
-last_reviewed: 2026-05-11
+last_reviewed: 2026-06-03
 extracted_from:
   source: SYSTEM-BLUEPRINT-v2.9.md (INV 1-10) + framework-internal v3.0 promotion (INV 1.A, INV 11)
   sections: ["§2 Non-Negotiable Invariants", "v3.0 INV 1.A — cross-family Generator≠Evaluator (principle-centric)", "v3.0 INV 11 — minimum-viable context per role (principle-centric)"]
@@ -229,11 +229,17 @@ INVARIANT 11: Minimum-viable context per role (principle-centric)
   integrity validation (the manifest itself is internally consistent) —
   this is bundle hygiene, not INV 11 enforcement.
 
-  CARVE-OUT: `meta_review` and `apply_meta` MAY load wider context
-  (including the monolith if it materially aids harness audit), since
-  these roles operate on the framework itself rather than on a single
-  iteration. Their wider load is recorded in `context_sources` for
-  audit traceability.
+  CARVE-OUT (narrowed v3.0): `meta_review` and `apply_meta` MAY load the
+  monolith ONLY for an explicit, declared reason — one of
+  `regeneration-diff`, `migration-audit`, or `backcompat-inspection` —
+  recorded in the DISPATCH row's `monolith_load_reason` field (in addition
+  to `context_sources`). Monolith-derived context MUST NOT be propagated
+  into any downstream non-carve-out role dispatch. For ordinary meta-review
+  / apply-meta work, Layer-2 is sufficient and a monolith load is an INV 11
+  violation like any other. (Pre-v3.0 the carve-out read "wider context if
+  it materially aids harness audit"; that was too broad — it let the
+  monolith dependency re-enter through the maintenance path. Narrowed per
+  JCC design review, ledger job `jcc-gate-design-001`.)
 
   SCOPE: applies to every dispatched role, every adapter, every adopter.
   Single-family bootstrap deployments inherit it unchanged — INV 11 has

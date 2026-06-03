@@ -1,3 +1,5 @@
+> ⚠️ **RETIRED (v3.0, 2026-06-03).** This soak is no longer a workflow gate. It assumed a live production pipeline; KB-Orchestrator-Core is a quiescent owner repo that generated zero ledger traffic during the window (`iterations_observed` stuck at 0), so the 5-iteration criterion was structurally unmeetable. It is superseded by **`adoption-guides/static-regeneration-gate.md`** (static load-surface proof + paragraph-level coverage + standing exact-reproducibility), designed via JCC ledger job `jcc-gate-design-001`. This file is kept for history only.
+
 # Phase 6b — Soak procedure
 
 **Started:** 2026-05-08

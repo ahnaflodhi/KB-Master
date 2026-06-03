@@ -28,9 +28,10 @@ loads:
   - 40-runtime/verification-ledger.md
   - 40-runtime/bootstrap-and-degradation.md
   - 40-runtime/claude-code-integration.md
-  # Verification ledger schema
+  # Schemas the orchestrator owns/writes (INV 9)
   - 60-schemas/verification-ledger.jsonl.md
   - 60-schemas/escalation.md
+  - 60-schemas/progress.md
 optional:
   - 80-status/shipped-vs-planned.md
 adapter_specific:

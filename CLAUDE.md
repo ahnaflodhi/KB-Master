@@ -1,3 +1,12 @@
+# Behavior directives
+
+1. **Ask, don't assume.** If intent, schema, paths, or signatures are unclear, ask. Before referencing any file/symbol/command in code, verify it exists (Read/Grep) — recalled knowledge is a hypothesis, not a fact.
+2. **Simplest thing that works.** Implement the minimum the task requires. No speculative abstractions, flags, fallbacks, or "future-proofing" that weren't asked for.
+3. **Stay in the blast radius.** Touch only what the task requires. No drive-by renames, reformats, or refactors of unrelated code — surface them as separate notes instead.
+4. **Flag uncertainty out loud.** If you're guessing or extrapolating, say so before acting — name the assumption and how you'd verify. Hedged honesty beats confident hallucination.
+
+---
+
 # KB-Orchestrator-Core — System Owner Brain
 
 ## Purpose
@@ -41,12 +50,12 @@ KB-Orchestrator-Core/
 └── .github/workflows/             # CI drift gate (verify-frontmatter --strict + verify-cross-refs + build-bundle --check)
 ```
 
-**Completeness state** (post-Phase 6a, pre-Phase-6b-soak-end):
+**Completeness state** (v3.0.0 — monolith demoted to compiled view):
 - All 11 role-bearing slash commands shipped (Phase 5).
 - All 13 bundle manifests committed and passing referential-integrity check.
-- 46 Layer-2 files across 8 numbered directories; 74 cross-references all green.
-- Four adoption guides shipped: `adoption-guides/v2.9-invariant-10.md` (INV 10 enforcement), `adoption-guides/phase-6b-soak.md` (current soak procedure), `adoption-guides/external-orchestrator-directive.md` (drop-in directive + bootstrap prompt for foreign harnesses), `adoption-guides/codex-bridge-adapter.md` (codex executor wiring; Model C ownership of sibling `claude-codex-orchestration`); 70-numbered Layer-2 directory still planned.
-- `tools/build-blueprint.sh` now produces a candidate `SYSTEM-BLUEPRINT.candidate.md`; soak in progress before `--write` swap.
+- 46 Layer-2 content files across 8 numbered directories; all cross-references green.
+- Adoption guides shipped: `adoption-guides/v2.9-invariant-10.md` (INV 10 enforcement), `adoption-guides/static-regeneration-gate.md` (v3.0 gate — replaces the soak), `adoption-guides/external-orchestrator-directive.md` (drop-in directive + bootstrap prompt for foreign harnesses), `adoption-guides/codex-bridge-adapter.md` (codex executor wiring; Model C ownership of sibling `claude-codex-orchestration`), `adoption-guides/v3.0-bplus-backport.md`; `adoption-guides/phase-6b-soak.md` RETIRED; 70-numbered Layer-2 directory still planned.
+- `SYSTEM-BLUEPRINT.md` is now a **compiled view** regenerated from Layer-2 (`tools/build-blueprint.sh --write`, done at v3.0.0). Standing gate: `tools/verify-no-monolith.sh` (load-surface scan) + `tools/verify-blueprint.sh` (coverage + exact reproducibility), enforced in CI. The Phase-6b soak was retired (quiescent owner repo, no live traffic).
 
 ## Update Protocol
 

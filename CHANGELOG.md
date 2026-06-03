@@ -1,5 +1,39 @@
 # Changelog — SYSTEM-BLUEPRINT.md
 
+## v3.0.0 — 2026-06-03 — monolith demoted; soak retired; static regeneration gate
+
+**Source**: User directive — retire the Phase-6b soak ("can't generate enough traffic so soak on its own won't work… soak should not be part of our workflow"), use the substitute-and-tag path, and **involve Codex in designing and building a better gate** (JCC — joint Claude-Codex operations).
+
+This is the comprehensive v3.0 entry (Phase 6 exit criterion #10). It completes the Phase-6 work that Phase 6a (tooling + carry-forward) and Phase 6b (soak initiation) set up: `SYSTEM-BLUEPRINT.md` is now a **compiled view** regenerated from Layer-2, not a canonical source.
+
+### Why the soak was retired (criterion #8 superseded, not "passed")
+
+The Phase-6b soak required *5 consecutive live iterations without a monolith read, observed over a 5-day window*. That assumed a live production pipeline. This repo is the quiescent **System Owner Brain**: the soak window (2026-05-08→13) and the 26 days after accrued **zero** new ledger rows; `iterations_observed` never left 0. A calendar-window observation gate with no traffic to observe cannot complete. The soak's *guarantee* (no runtime role depends on the monolith) is real and is now enforced **statically** — strictly stronger for every declared load path than sampling 5 runs.
+
+### JCC design review (ledger job `jcc-gate-design-001`)
+
+Codex (degraded-path `codex exec`, bridge binary absent per `codex-bridge-adapter.md §5`) adversarially reviewed the proposed replacement and caught three real defects, all folded in: (1) raw grep false-positives on prohibition prose → scan **structured load surfaces** only; (2) "structural-only diff" too weak → **paragraph-level coverage** + **standing exact-reproducibility**; (3) the INV-11 carve-out was too broad → **narrowed** to declared reason codes. DISPATCH+CONSUME rows recorded in `pipeline/verification-ledger.jsonl`.
+
+### Added
+
+- **`adoption-guides/static-regeneration-gate.md`** — the v3.0 replacement gate. One-time (pre-`--write`): frontmatter/cross-ref/bundle checks + `verify-no-monolith` + `verify-blueprint --coverage` + human semantic sign-off. Standing (CI): exact reproducibility + no-monolith.
+- **`tools/verify-no-monolith.sh`** — proves no `bundles/*.yaml` load surface or `loads_bundle` references the monolith (structured scan, not raw mentions). Hard-fail on load surfaces; WARN on stale `§`-citations in runtime files.
+- **`tools/verify-blueprint.sh`** — COVERAGE (every Layer-2 content body present verbatim in a fresh generation; 47/47 with the new schema) + REPRODUCE (committed monolith == generator output, timestamp-normalized).
+- **`60-schemas/progress.md`** — first-class `PROGRESS.md` schema (the 7 verified pipeline-state fields), closing the gap the JCC citation map flagged (the old `§5` was never extracted). Wired into `bundles/orchestrator-core.yaml`; `20-roles/orchestrator.md` now points its PROGRESS.md row here.
+
+### Changed
+
+- **`SYSTEM-BLUEPRINT.md`** regenerated via `tools/build-blueprint.sh --write` (pre-regen backup saved as `.SYSTEM-BLUEPRINT.pre-regen.<ts>.md`); version bumped 2.10 → 3.0.0. It is now a compiled view; direct edits are blocked by CI.
+- **`.github/workflows/ci.yml`** — `monolith-edit-guard` (weak "some Layer-2 co-change") replaced by `monolith-reproducible` (exact-reproducibility) + a no-monolith step.
+- **`00-overview/invariants.md`** — INVARIANT 11 carve-out narrowed: `meta_review`/`apply_meta` may load the monolith only for a declared `monolith_load_reason` ∈ {`regeneration-diff`, `migration-audit`, `backcompat-inspection`}, no downstream propagation.
+- **`README.md`** — vendoring copy block + smoke test now require registering `.claude/commands/` (the most common adoption miss: vendored command *specs* are not invokable slash commands until placed there); adoption-guides table updated.
+- **`80-status/shipped-vs-planned.md`** — `max_lines` 100 → 105 (codex-bridge protocol-2 rows).
+- **`adoption-guides/phase-6b-soak.md`** — banner: RETIRED, superseded by the static regeneration gate (kept for history).
+
+### Human semantic sign-off (criterion #6 of the new gate)
+
+Maintainer confirmed the regenerated monolith is a faithful **expansion** of the prior v2.10 monolith (2,531 → ~3,800 lines; growth is per-file headings + source comments + frontmatter promotion), not a meaning-altering reshuffle. COVERAGE proved all 46 content bodies present verbatim.
+
 ## Phase 6b (v3.0) — 2026-05-08 — soak initiated
 
 **Source**: User-driven directive — *"start phase 6b"* — the second half of v3.0 Phase 6: demote `SYSTEM-BLUEPRINT.md` from canonical truth-source to compiled view regenerated from Layer-2. This entry documents soak **initiation**; soak completion (criterion #8: "5 consecutive iterations of any agent role complete without reading SYSTEM-BLUEPRINT.md") lands at day 5 (target 2026-05-13) and ships the `v3.0.0` tag plus the comprehensive v3.0 CHANGELOG entry (criterion #10).

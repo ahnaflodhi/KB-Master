@@ -17,7 +17,7 @@ also_needed_by:
   - apply_meta
 status: stable
 version: 2.10
-last_reviewed: 2026-05-04
+last_reviewed: 2026-06-03
 extracted_from:
   source: SYSTEM-BLUEPRINT-v2.10.md
   sections: ["§6 Orchestrator", "§7 State machine", "§16 Escalation", "§19 Verification ledger", "§25 Dispatch shim", "§2 Invariant 9"]
@@ -60,7 +60,7 @@ The Orchestrator is the singleton process that owns pipeline state, dispatch, ve
 
 | File | Purpose | Schema |
 |---|---|---|
-| `PROGRESS.md` | Pipeline state, iter_count, cycle counters | §5 of SYSTEM-BLUEPRINT.md |
+| `PROGRESS.md` | Pipeline state, iter_count, cycle counters | `60-schemas/progress.md` |
 | `pipeline/verification-ledger.jsonl` | Append-only audit trail; 2 rows per delegation | `60-schemas/verification-ledger.jsonl.md` |
 | `iterations/current/escalation.md` | Cycle-exhaustion or unrecoverable errors | `60-schemas/escalation.md` |
 | `iterations/archive/iter-NNN/*` | Snapshot at Phase 8 archive | — |

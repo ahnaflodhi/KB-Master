@@ -16,7 +16,7 @@ related:
   - 50-adapters/capability-matrix.md
   - ../claude-codex-orchestration/BRIDGE_REQUIREMENTS.md
   - .claude/plans/crispy-sniffing-conway.md
-max_lines: 100
+max_lines: 105
 ---
 
 # Shipped vs Planned
@@ -72,11 +72,13 @@ Authoritative source: `codex-task-bridge capabilities --json` at runtime (when p
 | `start --mode design\|implement` (async) | **shipped** (MVP) | Available for parallelised extraction in v3.0 Phase 2+. |
 | `status` / `tail` / `result` / `list` | **shipped** (MVP) | |
 | `--model` passthrough | **shipped** (MVP) | |
-| `version` + `capabilities --json` probes | **planned** | Until shipped, orchestrators must follow bootstrap fallback (treat as protocol 1). |
+| `version` + `capabilities --json` probes | **shipped** (protocol 2) | 2026-05-12. `version` prints integer protocol level; `capabilities --json` advertises modes, subcommands, passthroughs, raw_reserved_flags, artifact_files, and best-effort codex_cli_version. Both probes run without Codex auth/network. |
+| `meta.env` required keys (`protocol`, `bridge_subcommand`, terminal `finished_at` + `exit_code`) | **shipped** (protocol 2) | 2026-05-12. Every job-creating dispatch records the new keys. |
+| Error contract (exits 0/2/3 + `BRIDGE_ERR_CODE=<slug>` stderr prefix) | **partial** (protocol 2) | 2026-05-12. `invalid_input` (exit 2) and `unsupported_capability` (exit 3) shipped. `codex_exec_failure` prefix deferred — downstream Codex failures still surface as non-zero exits without the prefix (orchestrators treat absence of prefix as MVP/Codex failure and degrade per BRIDGE_REQUIREMENTS § Versioning & capability discovery). |
+| `--output-schema` + `output.json` artifact | **shipped** (protocol 2) | 2026-05-12. Bridge forwards `--output-schema FILE` to `codex exec` as a global flag and copies the schema-conformant final message into `<job_dir>/output.json`. Replaces client-side validation in `_delegate.md` step 8 when a structured artifact is wanted. |
 | `--mode review` (`codex exec review`) | **planned** | Preferred mode for `codex-eval` once available. Currently uses `--mode design` with prompt-level review framing. |
 | `--sandbox` first-class | **planned** | Currently sandbox is mode-default per BRIDGE_REQUIREMENTS table. |
 | `resume`, `raw`, `--profile`, `--config`, `--add-dir`, `--cd`, `--image`, `--ephemeral`, `--ignore-user-config`, `--ignore-rules`, `--enable`, `--disable` | **planned** | Per BRIDGE_REQUIREMENTS planned-surface table. |
-| `--output-schema` + `output.json` artifact | **planned** | Until shipped, output validation runs client-side in `_delegate.md` step 8. |
 | `--json-events` + `events.jsonl` artifact + `events` subcommand | **planned** | |
 
 ## v3.0 restructure phase status

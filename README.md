@@ -214,7 +214,16 @@ cp INDEX.md SYSTEM-BLUEPRINT.md agents.config.yaml CHANGELOG.md your-project/
 cp -r 00-overview 10-pipeline 20-roles 30-knowledge 40-runtime 50-adapters 60-schemas 80-status your-project/
 cp -r bundles commands adoption-guides tools your-project/
 mkdir -p your-project/.github/workflows && cp .github/workflows/ci.yml your-project/.github/workflows/
+
+# Register the slash commands so Claude Code can invoke them. The copy above
+# lands the command SPECS under commands/; Claude Code only exposes commands
+# placed in .claude/commands/. Symlink (tracks upstream) or copy:
+mkdir -p your-project/.claude/commands && \
+  ln -s ../../commands/*.md your-project/.claude/commands/ 2>/dev/null || \
+  cp commands/*.md your-project/.claude/commands/
 ```
+
+> **Why this step matters:** without it, `/wiki-ingest`, `/wiki-query`, `/plan`, and the other role-bearing commands are documented contracts but not invokable — the harness never sees them. This is the single most common adoption miss.
 
 Then point Claude Code at INDEX.md:
 ```
@@ -260,8 +269,9 @@ Run, in order, against the vendored copy:
 2. `tools/verify-cross-refs.sh` — exits 0; confirms `depends_on` / `related` references resolve.
 3. `tools/build-bundle.sh --check` — exits 0; confirms bundles match Layer-2 frontmatter (no drift).
 4. Initialise `pipeline/verification-ledger.jsonl` as an empty file. Initialise `PROGRESS.md` with `pipeline_state: idle`.
-5. Dry first iteration: `/plan` → observe the dispatch envelope at Step 4, the DISPATCH ledger row inside Step 4, the CONSUME ledger row inside Step 10. If all three appear with the correct schema (per `60-schemas/verification-ledger.jsonl.md`), the wiring is sound.
-6. Attempt a state-mutating tool call without first emitting the four-fact INV 10 block. The harness MUST reject it. If it does not, INV 10 enforcement is not wired and the adoption is incomplete — see `adoption-guides/v2.9-invariant-10.md`.
+5. **Register the commands.** Confirm the role-bearing command specs are exposed to the harness as invokable slash commands — for Claude Code, that means present under `.claude/commands/` (symlink or copy of the vendored `commands/*.md`), not only under the vendored `commands/` mirror. Type `/wiki-ingest` and `/plan`; if the harness does not list them, they are documented but not wired. (Vendoring a submodule under `vendor/kb-orc/commands/` mirrors the **specs**; it does not register slash commands.)
+6. Dry first iteration: `/plan` → observe the dispatch envelope at Step 4, the DISPATCH ledger row inside Step 4, the CONSUME ledger row inside Step 10. If all three appear with the correct schema (per `60-schemas/verification-ledger.jsonl.md`), the wiring is sound.
+7. Attempt a state-mutating tool call without first emitting the four-fact INV 10 block. The harness MUST reject it. If it does not, INV 10 enforcement is not wired and the adoption is incomplete — see `adoption-guides/v2.9-invariant-10.md`.
 
 ### Adoption guides — when to read which
 
@@ -270,7 +280,8 @@ Run, in order, against the vendored copy:
 | [`adoption-guides/external-orchestrator-directive.md`](adoption-guides/external-orchestrator-directive.md) | You are wiring a non-Claude-Code orchestrator (Claude Agent SDK, Codex-driven, OpenAI-compatible, MCP-native, custom) to operate inside the KB-Orchestrator-Core workflow. Drop-in Directive + Bootstrap Prompt + per-adapter wiring. |
 | [`adoption-guides/codex-bridge-adapter.md`](adoption-guides/codex-bridge-adapter.md) | You want to bind Codex as an executor in your KB-Orchestrator-Core deployment (codex-audit / codex-eval / codex-implement). Names sibling project `claude-codex-orchestration` as canonical implementation; install paths, INV 10 enforcement, protocol probe + degradation. |
 | [`adoption-guides/v2.9-invariant-10.md`](adoption-guides/v2.9-invariant-10.md) | You need to wire INVARIANT 10 (pre-action fact presentation) enforcement in your harness. Per-runtime instructions. |
-| [`adoption-guides/phase-6b-soak.md`](adoption-guides/phase-6b-soak.md) | You are observing or operating the v3.0 Phase 6b soak (current as of 2026-05-10). Day-by-day procedure, abort/restart rules, day-5 swap. |
+| [`adoption-guides/static-regeneration-gate.md`](adoption-guides/static-regeneration-gate.md) | You are demoting `SYSTEM-BLUEPRINT.md` to a compiled view, or maintaining the standing gate that keeps it reproducible. The v3.0 replacement for the retired soak: static load-surface proof + paragraph-level coverage + exact-reproducibility CI. |
+| [`adoption-guides/phase-6b-soak.md`](adoption-guides/phase-6b-soak.md) | **RETIRED (v3.0)** — historical only. The 5-iteration soak assumed live pipeline traffic a quiescent owner repo never produces; superseded by `static-regeneration-gate.md`. |
 
 ---
 

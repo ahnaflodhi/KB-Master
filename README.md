@@ -277,6 +277,7 @@ Run, in order, against the vendored copy:
 
 | Guide | Read when |
 |---|---|
+| [`adoption-guides/quickstart-adopt-and-bridge.md`](adoption-guides/quickstart-adopt-and-bridge.md) | You want a single drop-in prompt to hand another agent to adopt the framework AND wire the Claude–Codex bridge in one pass. Points at the deeper guides for detail. |
 | [`adoption-guides/external-orchestrator-directive.md`](adoption-guides/external-orchestrator-directive.md) | You are wiring a non-Claude-Code orchestrator (Claude Agent SDK, Codex-driven, OpenAI-compatible, MCP-native, custom) to operate inside the KB-Orchestrator-Core workflow. Drop-in Directive + Bootstrap Prompt + per-adapter wiring. |
 | [`adoption-guides/codex-bridge-adapter.md`](adoption-guides/codex-bridge-adapter.md) | You want to bind Codex as an executor in your KB-Orchestrator-Core deployment (codex-audit / codex-eval / codex-implement). Names sibling project `claude-codex-orchestration` as canonical implementation; install paths, INV 10 enforcement, protocol probe + degradation. |
 | [`adoption-guides/v2.9-invariant-10.md`](adoption-guides/v2.9-invariant-10.md) | You need to wire INVARIANT 10 (pre-action fact presentation) enforcement in your harness. Per-runtime instructions. |

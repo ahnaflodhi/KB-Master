@@ -40,5 +40,9 @@ directives:
 ---
 ```
 
+## Hard rules
+
+- **Citation gate (research projects):** `Overall: PASS` and `Route: PASS` are FORBIDDEN when `Uncited Claims` is non-empty. Any uncited claim caps the verdict at `CONDITIONAL PASS` with `Route: FAIL` (back to Executor to cite or drop the claim) — never PASS. Rationale: citation consistency is a validated proxy for correctness; an uncited claim is an ungrounded claim. Complements the G8 source-recheck gate (`10-pipeline/quality-gates.md`), which checks whether *cited* sources are real; this rule ensures every claim is cited in the first place.
+
 ---
 

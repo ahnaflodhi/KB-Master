@@ -29,6 +29,9 @@ jobs:
       - name: Verify no runtime load surface references the monolith
         run: tools/verify-no-monolith.sh
 
+      - name: Verify agents.config + pipeline_state enum completeness
+        run: tools/verify-config.sh
+
   monolith-reproducible:
     name: SYSTEM-BLUEPRINT.md is exactly the generator output
     runs-on: ubuntu-latest

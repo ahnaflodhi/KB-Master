@@ -108,6 +108,8 @@ The Evaluator runs these on **every** evaluation. FLAGGED on any one → eval-re
 **Specification**: §25 Step 9; sample rate `validation.source_recheck_sample_rate` (default 0.20 → 20%).
 **Procedure**: orchestrator re-fetches a uniform random 20% of cited URLs in the output. For each, confirm the cited claim still exists at the source. Failure on any sampled URL → `verification_verdict: SOURCE-MISMATCH` → consume rejected.
 
+**Citation-completeness gate** (complements G8): per `60-schemas/eval-report.md` Hard rules, an `Overall: PASS` / `Route: PASS` is FORBIDDEN when the eval-report's `Uncited Claims` list is non-empty (caps at `CONDITIONAL PASS`, routes FAIL). G8 checks that *cited* sources are real; this rule ensures every claim is *cited in the first place*. Scope: research projects (where claims are source-backed). Commercial code claims are validated by tests/linters/type-checks (G3/G6) rather than URL citation.
+
 ### G9 — KB-lint gate (10 rules)
 
 **Specification**: §11 wiki-specific failure modes + §6 KB Linter.

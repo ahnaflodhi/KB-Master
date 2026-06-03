@@ -110,6 +110,7 @@ orchestrator's context; step 11 mutates pipeline state.
   ```jsonl
   {"ts":"<ISO-8601>","event":"dispatch","iter":"<iter_id>","role":"<role>","agent_id":"<agent_name>","adapter":"<adapter_name>","prompt_hash":"sha256:<hex>","sandbox":"<value>","model":"<value>","config_revision":<int>,"job_id":"<job_id>","expected_schema":"<schema_name>","context_sources":["bundles/<role>.yaml","<each-file-loaded>",...],"context_selection_mechanism":"<bundle|semantic-routing|dynamic-composition|other>"}
   ```
+  - Add the OPTIONAL `adapter_degraded` field to this row **only when** the adapter ran in a degraded/fallback mode (e.g. `codex-bridge` with no bridge binary → direct `codex exec`); omit it otherwise. Schema: `60-schemas/verification-ledger.jsonl.md`.
 
 ### Step 5 — AWAIT
 

@@ -33,6 +33,7 @@ The orchestrator maintains an append-only ledger at `pipeline/verification-ledge
 Field semantics:
 - `context_sources` (dispatch row, INV 11): the list of file paths the orchestrator passed into the dispatch envelope. `SYSTEM-BLUEPRINT.md` in this list is a hard fail at Step 10 CONSUME (INV 11 violation; meta_review and apply_meta carved out per INV 11). Empty list is also a violation — every dispatch loads SOMETHING.
 - `context_selection_mechanism` (dispatch row): names the mechanism that produced `context_sources`. Default `"bundle"`; adopters substituting other mechanisms record `"semantic-routing"`, `"dynamic-composition"`, etc. Required so meta_review can detect mechanism drift across iterations.
+- `adapter_degraded` (dispatch row, OPTIONAL): present only when the dispatched adapter ran in a degraded/fallback mode — e.g. `codex-bridge` with no bridge binary falling back to direct `codex exec` (per `adoption-guides/codex-bridge-adapter.md §5`). Value is a short string naming the degradation + its sanction. Omit entirely when the adapter ran in its first-class mode. Lets meta_review distinguish degraded-path runs when assessing rejection rates.
 - `auth_verdict`: did the output's job_id, dispatch hash, and artifact path match the dispatch ledger entry?
 - `schema_verdict`: did the output conform to the role's expected schema (e.g. audit-report.md headers)?
 - `verification_verdict`: did the output pass semantic-isolation, reward-hacking checks, and source-recheck sample?

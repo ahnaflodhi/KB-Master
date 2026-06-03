@@ -4,7 +4,7 @@ A single drop-in prompt to hand another agent so it can adopt KB-Orchestrator-Co
 into its project and wire Codex as an executor. It points at the canonical guides
 rather than restating their internals, so it stays correct as those guides evolve.
 
-**Pin:** `v3.0.0`. **Deeper guides:** `external-orchestrator-directive.md` (directive +
+**Pin:** `v3.1.0`. **Deeper guides:** `external-orchestrator-directive.md` (directive +
 bootstrap prompt), `codex-bridge-adapter.md` (Codex wiring). **Runtime entrypoint:** `INDEX.md`.
 
 ## The prompt
@@ -15,7 +15,7 @@ KB + adversarial agentic pipeline) into THIS project, and wiring the Claude–Co
 bridge so Codex can run as an executor. Work in order; verify each step before the next.
 
 SOURCE OF TRUTH
-- Upstream repo: git@github.com:ahnaflodhi/KB-Master.git  — pin to tag v3.0.0.
+- Upstream repo: git@github.com:ahnaflodhi/KB-Master.git  — pin to tag v3.1.0.
 - Read, in this order: README.md §"Quick Start" + §"Vendoring for external orchestrators",
   then adoption-guides/external-orchestrator-directive.md (drop-in directive + bootstrap
   prompt), then adoption-guides/codex-bridge-adapter.md (Codex wiring).
@@ -23,12 +23,13 @@ SOURCE OF TRUTH
   at runtime — it is a compiled view, not a source. Layer-2 (00-overview/…80-status/) is canonical.
 
 ADOPT (framework)
-1. Vendor upstream at tag v3.0.0 (sparse-checkout or submodule per README), into e.g. vendor/kb-orc/.
+1. Vendor upstream at tag v3.1.0 (sparse-checkout or submodule per README), into e.g. vendor/kb-orc/.
 2. REGISTER COMMANDS: the vendored commands/ are specs, NOT invokable. Create .claude/commands/
    and symlink/copy commands/*.md there — else /plan, /wiki-ingest, /wiki-query, /_delegate
    are not callable. (Most common adoption miss.)
 3. Run the post-vendoring smoke test (README §"Post-vendoring smoke test"): verify-frontmatter
-   --strict, verify-cross-refs, build-bundle --check all exit 0; init pipeline/verification-ledger.jsonl
+   --strict, verify-cross-refs, build-bundle --check, verify-no-monolith, AND verify-config (config +
+   pipeline_state completeness — catches the most common migration gaps) all exit 0; init pipeline/verification-ledger.jsonl
    (empty) and PROGRESS.md (pipeline_state: idle, per 60-schemas/progress.md); dry /plan iteration
    must emit a DISPATCH row (Step 4) + CONSUME row (Step 10); a state-mutating call WITHOUT the
    four-fact INV 10 block must be rejected.

@@ -32,7 +32,7 @@ project root.
 ```markdown
 # PROGRESS
 
-pipeline_state:          {idle | planned | audited | pre-check-complete | contracted | executed}
+pipeline_state:          {idle | planned | audited | pre-check-complete | contracted | executed | evaluated | kb-linted | escalated}
 iter_count:              {integer — completed iterations; ++ at archive}
 tokens_used_this_iter:   {integer — reset to 0 at archive}
 spec_flaw_count:         {integer — SPEC-FLAW route increments; >= 2 → ESCALATE}
@@ -43,10 +43,15 @@ eval_cycle_current:      {integer — Evaluate phase; FAIL routes back to Execut
 
 #### Field notes
 
-- `pipeline_state` — the resumable state. The canonical enum and ALL transitions are
-  owned by `10-pipeline/state-machine.md`; this schema lists the persisted values, not
-  the transition logic. Bootstrap (`10-pipeline/iteration-lifecycle.md` step 3) reads
-  it: `idle` → fresh iteration; any other value → resume from that state.
+- `pipeline_state` — the resumable state. **This schema is the canonical enum**;
+  `10-pipeline/state-machine.md` owns the *transitions*, and `tools/verify-config.sh`
+  asserts every `pipeline_state:` value referenced under `commands/` is listed here (no
+  drift). The post-execution tail: `executed` → Evaluate → `evaluated` (Evaluator PASS,
+  `commands/evaluate.md`) → KB-Lint → `kb-linted` (`commands/kb-lint.md`) → archive
+  (`iter_count++`, back to `idle`). Bootstrap (`10-pipeline/iteration-lifecycle.md` step
+  3) reads it: `idle` → fresh iteration; any other value → resume from that state.
+  `escalated` is terminal — set on `final_verdict == escalated` (`commands/_delegate.md`
+  Step 11); the iteration loop stops and awaits human resolution.
 - `iter_count` MUST advance only on a new iteration, and only at the archive step
   (which sets `pipeline_state: idle` and resets `tokens_used_this_iter`) — never
   mid-iteration.

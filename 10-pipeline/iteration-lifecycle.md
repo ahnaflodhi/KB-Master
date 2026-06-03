@@ -29,7 +29,7 @@ directives:
 
 ## Iteration Lifecycle — Narrative
 
-This file is the **narrative companion** to `10-pipeline/state-machine.md`. State-machine.md gives the diagram and the canonical state enum; this file walks an iteration end-to-end, explains why each transition exists, and notes where harness-decay and Invariant 10 (pre-action fact presentation) fire. For escalation triggers in detail, see `10-pipeline/escalation-rules.md`.
+This file is the **narrative companion** to `10-pipeline/state-machine.md`. State-machine.md gives the diagram and the canonical state **transitions**; `60-schemas/progress.md` owns the canonical `pipeline_state` **enum** (the value list). This file walks an iteration end-to-end, explains why each transition exists, and notes where harness-decay and Invariant 10 (pre-action fact presentation) fire. For escalation triggers in detail, see `10-pipeline/escalation-rules.md`.
 
 ### Startup ritual (per iteration)
 

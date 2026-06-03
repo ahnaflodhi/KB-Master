@@ -9,7 +9,7 @@ Composes `/_delegate` with `role=executor.research` OR `role=executor.commercial
 
 ## Preconditions
 
-- `PROGRESS.md.pipeline_state` MUST be `contracted` (post-Planner contract write) OR `eval-fail-cycle-N` (re-execute after Evaluator FAIL, cycle ≤ 3).
+- `PROGRESS.md.pipeline_state` MUST be `contracted` (post-Planner contract write) for a first execution. A re-execute after an Evaluator FAIL reuses the same valid contract (the FAIL loop does not re-contract) and is gated by `eval_cycle_current` ≥ 1 (cycle ≤ 3) — the retry is marked by that counter, not by a distinct `pipeline_state`.
 - `iterations/current/{spec.md, audit-report.md, contract.md, acceptance-checklist.md}` MUST all exist.
 - `eval_cycle_current` MUST be < `policy.eval_cycle_max` (default 3).
 

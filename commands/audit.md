@@ -11,7 +11,7 @@ Per **Invariant 2**, the TruthSayer's mandate is to find what is wrong, weak, or
 
 ## Preconditions
 
-- `PROGRESS.md.pipeline_state` MUST be `planned` (post-Planner) OR `audit-revise-cycle-1` (re-audit after Planner re-plan).
+- `PROGRESS.md.pipeline_state` MUST be `planned` (post-Planner). A re-audit after a Planner re-plan is the same `planned` state with `audit_cycle_current` ≥ 1 — not a distinct state.
 - `iterations/current/spec.md` MUST exist (Planner output).
 - `audit_cycle_current` MUST be < `policy.audit_cycle_max` (default 2).
 

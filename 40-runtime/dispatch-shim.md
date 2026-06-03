@@ -87,7 +87,7 @@ Load minimum-viable context per `INVARIANT 11` (principle-centric). The framewor
 
 ### Step 4 — DISPATCH
 
-Call `adapter.dispatch(role, prompt, sandbox, model, inputs, expected_schema)`. The adapter returns a unique `job_id`. Immediately write a DISPATCH row to `pipeline/verification-ledger.jsonl` with `prompt_hash = sha256(prompt)`, `config_revision`, `sandbox`, `model`, `job_id`, `target_path`, `expected_schema`, `context_sources` (from Step 3), and `context_selection_mechanism` (from Step 3). If `enforces_pre_action_facts: orchestrator-side`, emit the §25-mandated 4-fact block as user-visible text immediately before the call.
+Call `adapter.dispatch(role, prompt, sandbox, model, inputs, expected_schema)`. The adapter returns a unique `job_id`. Immediately write a DISPATCH row to `pipeline/verification-ledger.jsonl` with `prompt_hash = sha256(prompt)`, `config_revision`, `sandbox`, `model`, `job_id`, `target_path`, `expected_schema`, `context_sources` (from Step 3), `context_selection_mechanism` (from Step 3), and `adapter_degraded` **only if** the adapter ran in a degraded/fallback mode (e.g. `codex-bridge` → direct `codex exec`; per `60-schemas/verification-ledger.jsonl.md`). If `enforces_pre_action_facts: orchestrator-side`, emit the §25-mandated 4-fact block as user-visible text immediately before the call.
 
 ### Step 5 — AWAIT
 

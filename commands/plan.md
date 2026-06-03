@@ -9,7 +9,7 @@ Composes `/_delegate` with `role=planner`. Role contract: `20-roles/planner.md`.
 
 ## Preconditions
 
-- `PROGRESS.md.pipeline_state` MUST be `idle` (fresh iteration) OR `audit-revise-cycle-1`/`audit-revise-cycle-2` (re-plan after TruthSayer REVISE) OR `spec-flaw-route` (re-plan after Evaluator SPEC-FLAW route).
+- `PROGRESS.md.pipeline_state` MUST be `idle` (fresh iteration), OR a re-plan is active — signalled by `audit_cycle_current` ≥ 1 (re-plan after TruthSayer REVISE; max 2), `pre_check_cycle_current` ≥ 1 (re-plan after Pre-Check ambiguity; round 2 → ESCALATE), or `spec_flaw_count` ≥ 1 (re-plan after Evaluator SPEC-FLAW; ESCALATE at 2). Re-plan context lives in those counters, not a distinct `pipeline_state` value (`60-schemas/progress.md`).
 - `PROJECT.md` MUST exist with `project_type` and `primary_objective`.
 - If re-plan: `iterations/current/audit-report.md` (from TruthSayer) OR `iterations/current/spec-feedback.md` (from Evaluator) MUST exist as the input feedback.
 

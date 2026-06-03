@@ -17,8 +17,8 @@
 # assignment is a configuration error and the orchestrator will refuse to start.
 
 schema_version: 3                 # v3.0 Phase 6b — adds REQUIRED `family` field on every agent (INV 1.A enforcement)
-config_revision: 5                # bump on every edit; recorded in verification ledger
-last_updated: 2026-05-10
+config_revision: 6                # bump on every edit; recorded in verification ledger
+last_updated: 2026-06-03
 
 # ---------------------------------------------------------------------------
 # 1. ADAPTERS — protocol-layer drivers. One per agent type.
@@ -140,7 +140,7 @@ agents:
   claude-main:
     adapter: claude-orchestrator
     family: claude                    # INV 1.A — enforces cross-family Generator≠Evaluator
-    model: claude-opus-4-7
+    model: claude-opus-4-8
     is_orchestrator: true
     loads_bundle: orchestrator-core   # also dispatches apply_meta inline; orchestrator-core covers both
     capabilities:
@@ -157,7 +157,7 @@ agents:
     adapter: claude-native
     family: claude
     sub_mode: subagent
-    model: claude-opus-4-7
+    model: claude-opus-4-8
     loads_bundle: planner             # also re-used for meta_review role; meta-review bundle loaded at dispatch time per roles map
     system_role_hint: "blueprint-planner"
     sandbox: read-only
@@ -177,7 +177,7 @@ agents:
     adapter: claude-native
     family: claude
     sub_mode: subagent
-    model: claude-opus-4-7
+    model: claude-opus-4-8
     loads_bundle: executor-research
     system_role_hint: "blueprint-executor-research"
     sandbox: workspace-write
@@ -187,7 +187,7 @@ agents:
     adapter: claude-native
     family: claude
     sub_mode: subagent
-    model: claude-opus-4-7
+    model: claude-opus-4-8
     loads_bundle: executor-commercial
     system_role_hint: "blueprint-executor-commercial"
     sandbox: workspace-write
@@ -207,7 +207,7 @@ agents:
     adapter: claude-native
     family: claude
     sub_mode: subagent
-    model: claude-opus-4-7
+    model: claude-opus-4-8
     loads_bundle: wiki-ingest
     system_role_hint: "blueprint-wiki-ingester"
     sandbox: workspace-write

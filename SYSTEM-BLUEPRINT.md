@@ -1,11 +1,11 @@
 # Agent Orchestration + Self-Learning Knowledge Base — System Blueprint
 
-> ⚠️ **Regenerated from Layer-2 sources by `tools/build-blueprint.sh` on 2026-06-03T09:02:12Z.**
+> ⚠️ **Regenerated from Layer-2 sources by `tools/build-blueprint.sh` on 2026-06-03T11:33:05Z.**
 > This file is a **compiled view** for backwards compatibility. **DO NOT EDIT DIRECTLY** — modify the relevant file under `00-overview/`–`80-status/` and re-run `tools/build-blueprint.sh --write`.
 > Runtime entrypoint for agents: `INDEX.md` (Layer-3) + `bundles/<role>.yaml`.
 
-**Version**: 3.0.0 | **Owner**: KB-Orchestrator-Core (Claude Code)
-**Regenerated**: 2026-06-03T09:02:12Z
+**Version**: 3.1.0 | **Owner**: KB-Orchestrator-Core (Claude Code)
+**Regenerated**: 2026-06-03T11:33:05Z
 **Source layout**: 00-overview,10-pipeline,20-roles,30-knowledge,40-runtime,50-adapters,60-schemas,70-adoption,80-status
 
 ---
@@ -683,7 +683,7 @@ Optional:
 
 ## Iteration Lifecycle — Narrative
 
-This file is the **narrative companion** to `10-pipeline/state-machine.md`. State-machine.md gives the diagram and the canonical state enum; this file walks an iteration end-to-end, explains why each transition exists, and notes where harness-decay and Invariant 10 (pre-action fact presentation) fire. For escalation triggers in detail, see `10-pipeline/escalation-rules.md`.
+This file is the **narrative companion** to `10-pipeline/state-machine.md`. State-machine.md gives the diagram and the canonical state **transitions**; `60-schemas/progress.md` owns the canonical `pipeline_state` **enum** (the value list). This file walks an iteration end-to-end, explains why each transition exists, and notes where harness-decay and Invariant 10 (pre-action fact presentation) fire. For escalation triggers in detail, see `10-pipeline/escalation-rules.md`.
 
 ### Startup ritual (per iteration)
 
@@ -887,6 +887,8 @@ The Evaluator runs these on **every** evaluation. FLAGGED on any one → eval-re
 **Specification**: §25 Step 9; sample rate `validation.source_recheck_sample_rate` (default 0.20 → 20%).
 **Procedure**: orchestrator re-fetches a uniform random 20% of cited URLs in the output. For each, confirm the cited claim still exists at the source. Failure on any sampled URL → `verification_verdict: SOURCE-MISMATCH` → consume rejected.
 
+**Citation-completeness gate** (complements G8): per `60-schemas/eval-report.md` Hard rules, an `Overall: PASS` / `Route: PASS` is FORBIDDEN when the eval-report's `Uncited Claims` list is non-empty (caps at `CONDITIONAL PASS`, routes FAIL). G8 checks that *cited* sources are real; this rule ensures every claim is *cited in the first place*. Scope: research projects (where claims are source-backed). Commercial code claims are validated by tests/linters/type-checks (G3/G6) rather than URL citation.
+
 ### G9 — KB-lint gate (10 rules)
 
 **Specification**: §11 wiki-specific failure modes + §6 KB Linter.
@@ -1071,7 +1073,7 @@ After enaction, `agents.config.yaml.config_revision` is recorded in the next dis
 - MUST NOT bypass `git mv` for archived commands — the move must preserve git history.
 - MUST NOT skip the `pipeline/verification-ledger.jsonl` audit row.
 - MUST NOT mutate any file without first reading the corresponding `meta/audit-YYYY-MM-DD.md` verdict and quoting it in the Edit's pre-action fact block.
-- MUST NOT be invoked when the orchestrator's `pipeline_state` is mid-iteration (`planned`, `audited`, `executing`, etc.) — Apply-Meta runs only at `idle`.
+- MUST NOT be invoked when the orchestrator's `pipeline_state` is any non-`idle` value — i.e. any of `planned`, `audited`, `pre-check-complete`, `contracted`, `executed`, `evaluated`, `kb-linted` (mid-iteration) or `escalated` (terminal, awaiting human). Apply-Meta runs only at `idle`.
 
 ### Cross-references
 
@@ -2640,7 +2642,7 @@ Load minimum-viable context per `INVARIANT 11` (principle-centric). The framewor
 
 ### Step 4 — DISPATCH
 
-Call `adapter.dispatch(role, prompt, sandbox, model, inputs, expected_schema)`. The adapter returns a unique `job_id`. Immediately write a DISPATCH row to `pipeline/verification-ledger.jsonl` with `prompt_hash = sha256(prompt)`, `config_revision`, `sandbox`, `model`, `job_id`, `target_path`, `expected_schema`, `context_sources` (from Step 3), and `context_selection_mechanism` (from Step 3). If `enforces_pre_action_facts: orchestrator-side`, emit the §25-mandated 4-fact block as user-visible text immediately before the call.
+Call `adapter.dispatch(role, prompt, sandbox, model, inputs, expected_schema)`. The adapter returns a unique `job_id`. Immediately write a DISPATCH row to `pipeline/verification-ledger.jsonl` with `prompt_hash = sha256(prompt)`, `config_revision`, `sandbox`, `model`, `job_id`, `target_path`, `expected_schema`, `context_sources` (from Step 3), `context_selection_mechanism` (from Step 3), and `adapter_degraded` **only if** the adapter ran in a degraded/fallback mode (e.g. `codex-bridge` → direct `codex exec`; per `60-schemas/verification-ledger.jsonl.md`). If `enforces_pre_action_facts: orchestrator-side`, emit the §25-mandated 4-fact block as user-visible text immediately before the call.
 
 ### Step 5 — AWAIT
 
@@ -3432,6 +3434,10 @@ DEADLOCK ESCALATION
 ---
 ```
 
+## Hard rules
+
+- **Citation gate (research projects):** `Overall: PASS` and `Route: PASS` are FORBIDDEN when `Uncited Claims` is non-empty. Any uncited claim caps the verdict at `CONDITIONAL PASS` with `Route: FAIL` (back to Executor to cite or drop the claim) — never PASS. Rationale: citation consistency is a validated proxy for correctness; an uncited claim is an ungrounded claim. Complements the G8 source-recheck gate (`10-pipeline/quality-gates.md`), which checks whether *cited* sources are real; this rule ensures every claim is cited in the first place.
+
 ---
 
 
@@ -3610,7 +3616,7 @@ project root.
 ```markdown
 # PROGRESS
 
-pipeline_state:          {idle | planned | audited | pre-check-complete | contracted | executed}
+pipeline_state:          {idle | planned | audited | pre-check-complete | contracted | executed | evaluated | kb-linted | escalated}
 iter_count:              {integer — completed iterations; ++ at archive}
 tokens_used_this_iter:   {integer — reset to 0 at archive}
 spec_flaw_count:         {integer — SPEC-FLAW route increments; >= 2 → ESCALATE}
@@ -3621,10 +3627,15 @@ eval_cycle_current:      {integer — Evaluate phase; FAIL routes back to Execut
 
 #### Field notes
 
-- `pipeline_state` — the resumable state. The canonical enum and ALL transitions are
-  owned by `10-pipeline/state-machine.md`; this schema lists the persisted values, not
-  the transition logic. Bootstrap (`10-pipeline/iteration-lifecycle.md` step 3) reads
-  it: `idle` → fresh iteration; any other value → resume from that state.
+- `pipeline_state` — the resumable state. **This schema is the canonical enum**;
+  `10-pipeline/state-machine.md` owns the *transitions*, and `tools/verify-config.sh`
+  asserts every `pipeline_state:` value referenced under `commands/` is listed here (no
+  drift). The post-execution tail: `executed` → Evaluate → `evaluated` (Evaluator PASS,
+  `commands/evaluate.md`) → KB-Lint → `kb-linted` (`commands/kb-lint.md`) → archive
+  (`iter_count++`, back to `idle`). Bootstrap (`10-pipeline/iteration-lifecycle.md` step
+  3) reads it: `idle` → fresh iteration; any other value → resume from that state.
+  `escalated` is terminal — set on `final_verdict == escalated` (`commands/_delegate.md`
+  Step 11); the iteration loop stops and awaits human resolution.
 - `iter_count` MUST advance only on a new iteration, and only at the archive step
   (which sets `pipeline_state: idle` and resets `tokens_used_this_iter`) — never
   mid-iteration.
@@ -3731,6 +3742,7 @@ The orchestrator maintains an append-only ledger at `pipeline/verification-ledge
 Field semantics:
 - `context_sources` (dispatch row, INV 11): the list of file paths the orchestrator passed into the dispatch envelope. `SYSTEM-BLUEPRINT.md` in this list is a hard fail at Step 10 CONSUME (INV 11 violation; meta_review and apply_meta carved out per INV 11). Empty list is also a violation — every dispatch loads SOMETHING.
 - `context_selection_mechanism` (dispatch row): names the mechanism that produced `context_sources`. Default `"bundle"`; adopters substituting other mechanisms record `"semantic-routing"`, `"dynamic-composition"`, etc. Required so meta_review can detect mechanism drift across iterations.
+- `adapter_degraded` (dispatch row, OPTIONAL): present only when the dispatched adapter ran in a degraded/fallback mode — e.g. `codex-bridge` with no bridge binary falling back to direct `codex exec` (per `adoption-guides/codex-bridge-adapter.md §5`). Value is a short string naming the degradation + its sanction. Omit entirely when the adapter ran in its first-class mode. Lets meta_review distinguish degraded-path runs when assessing rejection rates.
 - `auth_verdict`: did the output's job_id, dispatch hash, and artifact path match the dispatch ledger entry?
 - `schema_verdict`: did the output conform to the role's expected schema (e.g. audit-report.md headers)?
 - `verification_verdict`: did the output pass semantic-isolation, reward-hacking checks, and source-recheck sample?
@@ -3772,7 +3784,7 @@ Source of truth at runtime: `agents.config.yaml` for adapters/agents/roles; `cod
 
 | Asset | Status | Path | Notes |
 |---|---|---|---|
-| `agents.config.yaml` | **shipped** (v2.10) | project root | Registry: adapters, agents, roles, validation, policy. `schema_version: 1`, `config_revision: 3`. v2.9 added Invariant-10 policy block; v2.10 added host_access policy block + per-adapter advertisements. |
+| `agents.config.yaml` | **shipped** (v2.10) | project root | Registry: adapters, agents, roles, validation, policy. `schema_version: 3`, `config_revision: 6`. v2.9 added Invariant-10 policy block; v2.10 added host_access policy block + per-adapter advertisements; v3.0 added required `family:` (INV 1.A); v3.1 reconciled model aliases. |
 | `commands/_delegate.md` | **shipped** (v2.10, Phase 6a closures landed) | commands/ | Eleven-step dispatch sequence. v2.9 enforces_pre_action_facts at Step 2 PROBE. v2.10 host_access at Step 2 PROBE + Step 4 DISPATCH defense-in-depth re-check (Phase 6a). v2.9 INVARIANT-10 sub-check at Step 8 SCHEMA validates agent execution-log fact blocks (Phase 6a). Step 3 PREPARE references bundles. |
 | `commands/pre-check.md` | **shipped** (v1.0+, drift-fixed v2.8.1) | commands/ | The original role-bearing slash command. |
 | 10 role-bearing slash commands (`plan`, `audit`, `execute`, `evaluate`, `kb-lint`, `wiki-ingest`, `wiki-query`, `escalate`, `meta-review`, `apply-meta`) | **shipped** (v3.0 Phase 5) | commands/ | Each composes `_delegate.md` with role + inputs + expected_schema; routing per the role's contract in `20-roles/`. |

@@ -9,7 +9,7 @@ also_needed_by:
   - meta_review
 status: stable
 version: 2.10
-last_reviewed: 2026-05-04
+last_reviewed: 2026-06-03
 extracted_from:
   source: SYSTEM-BLUEPRINT-v2.10.md
   sections: ["§6 Apply-Meta", "§22 Harness Assumption Decay Protocol (RETAIN/DOWNGRADE/ARCHIVE actions)", "§5 PROGRESS.md schema", "§9 Invariant 9 (orchestrator-only writes)"]
@@ -89,7 +89,7 @@ After enaction, `agents.config.yaml.config_revision` is recorded in the next dis
 - MUST NOT bypass `git mv` for archived commands — the move must preserve git history.
 - MUST NOT skip the `pipeline/verification-ledger.jsonl` audit row.
 - MUST NOT mutate any file without first reading the corresponding `meta/audit-YYYY-MM-DD.md` verdict and quoting it in the Edit's pre-action fact block.
-- MUST NOT be invoked when the orchestrator's `pipeline_state` is mid-iteration (`planned`, `audited`, `executing`, etc.) — Apply-Meta runs only at `idle`.
+- MUST NOT be invoked when the orchestrator's `pipeline_state` is any non-`idle` value — i.e. any of `planned`, `audited`, `pre-check-complete`, `contracted`, `executed`, `evaluated`, `kb-linted` (mid-iteration) or `escalated` (terminal, awaiting human). Apply-Meta runs only at `idle`.
 
 ### Cross-references
 

@@ -42,7 +42,7 @@ Source of truth at runtime: `agents.config.yaml` for adapters/agents/roles; `cod
 
 | Asset | Status | Path | Notes |
 |---|---|---|---|
-| `agents.config.yaml` | **shipped** (v2.10) | project root | Registry: adapters, agents, roles, validation, policy. `schema_version: 1`, `config_revision: 3`. v2.9 added Invariant-10 policy block; v2.10 added host_access policy block + per-adapter advertisements. |
+| `agents.config.yaml` | **shipped** (v2.10) | project root | Registry: adapters, agents, roles, validation, policy. `schema_version: 3`, `config_revision: 6`. v2.9 added Invariant-10 policy block; v2.10 added host_access policy block + per-adapter advertisements; v3.0 added required `family:` (INV 1.A); v3.1 reconciled model aliases. |
 | `commands/_delegate.md` | **shipped** (v2.10, Phase 6a closures landed) | commands/ | Eleven-step dispatch sequence. v2.9 enforces_pre_action_facts at Step 2 PROBE. v2.10 host_access at Step 2 PROBE + Step 4 DISPATCH defense-in-depth re-check (Phase 6a). v2.9 INVARIANT-10 sub-check at Step 8 SCHEMA validates agent execution-log fact blocks (Phase 6a). Step 3 PREPARE references bundles. |
 | `commands/pre-check.md` | **shipped** (v1.0+, drift-fixed v2.8.1) | commands/ | The original role-bearing slash command. |
 | 10 role-bearing slash commands (`plan`, `audit`, `execute`, `evaluate`, `kb-lint`, `wiki-ingest`, `wiki-query`, `escalate`, `meta-review`, `apply-meta`) | **shipped** (v3.0 Phase 5) | commands/ | Each composes `_delegate.md` with role + inputs + expected_schema; routing per the role's contract in `20-roles/`. |

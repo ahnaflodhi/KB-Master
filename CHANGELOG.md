@@ -1,5 +1,25 @@
 # Changelog — SYSTEM-BLUEPRINT.md
 
+## v3.1.0 — 2026-06-03 — workflow hardening (JCC research + C-UAS migration audit)
+
+**Source**: User directive — *"fix this workflow as per the highlighted gaps and research"* before handing the framework to adopters. Driven by a JCC workflow-improvement research pass (`jcc-workflow-research-001`) and a C-UAS migration completeness audit. Every change was **cross-family audited by Codex** (INV 1.A — builder ≠ auditor); the audit loop converged over three rounds (6 → 3 → 0 must-fixes) before landing (`jcc-v31-audit-001`, `jcc-v31-reaudit-001`).
+
+### Fixed (confirmed defects)
+
+- **`60-schemas/progress.md`** — `pipeline_state` enum was incomplete (6 values); completed to the 9 real persisted states (added `evaluated`, `kb-linted`, `escalated`). This schema is now the **canonical enum**; `state-machine.md` owns transitions; `iteration-lifecycle.md` reconciled to match (was contradictory).
+- **`pipeline_state` contract coherence** — `commands/{plan,audit,execute}.md` and `20-roles/apply-meta.md` cited non-existent pseudo-states (`audit-revise-cycle-1/2`, `spec-flaw-route`, `eval-fail-cycle-N`, `executing`). Rewritten to canonical state + cycle counter (`audit_cycle_current`/`pre_check_cycle_current`/`spec_flaw_count`/`eval_cycle_current`). `plan.md` now lists all three re-plan triggers; `apply-meta.md` lists all 8 non-idle states.
+- **`60-schemas/verification-ledger.jsonl.md`** — formalized the OPTIONAL `adapter_degraded` dispatch-row field (the degraded codex-bridge path was real but unschematized); propagated to `commands/_delegate.md` Step 4 + `40-runtime/dispatch-shim.md`.
+- **`agents.config.yaml`** — model alias `claude-opus-4-7` → `claude-opus-4-8` (5×); `config_revision` 5 → 6; `last_updated` → 2026-06-03. `80-status/shipped-vs-planned.md` de-staled (`schema_version: 3`, `config_revision: 6`).
+
+### Added
+
+- **`tools/verify-config.sh`** (wired into CI) — config-completeness gate: every dispatched agent has `family/model/loads_bundle/adapter` + `sandbox` (orchestrator exempt — never dispatched); governance blocks present with `cross_family_*_required`; and **no `pipeline_state` drift** (every backtick- or assignment-form state in `commands/`+`20-roles/`+`10-pipeline/` is in the canonical enum). Born from the C-UAS migration pain (hand-rebuilt config, schema drift) — converts that manual audit into one command for every adopter. It immediately caught a real missing enum value (`escalated`).
+- **Citation-completeness gate** — `60-schemas/eval-report.md` + `10-pipeline/quality-gates.md`: a non-empty `Uncited Claims` list forbids `PASS` (caps at `CONDITIONAL PASS`, routes FAIL). Grounded in 2025–2026 hallucination research (citation consistency ∝ correctness).
+
+### Deferred (deliberate design, not rushed)
+
+Lazy adapter probing, a first-class `skills:` progressive-disclosure mechanism (Agent Skills pattern), thin `/pre-check` wrapper, and Planner-contract-pass removal — each a new surface that warrants its own design pass rather than bundling into a hardening release.
+
 ## v3.0.0 — 2026-06-03 — monolith demoted; soak retired; static regeneration gate
 
 **Source**: User directive — retire the Phase-6b soak ("can't generate enough traffic so soak on its own won't work… soak should not be part of our workflow"), use the substitute-and-tag path, and **involve Codex in designing and building a better gate** (JCC — joint Claude-Codex operations).

@@ -38,7 +38,8 @@ ADOPT (framework)
 
 WIRE THE CLAUDE–CODEX BRIDGE
 5. Install per codex-bridge-adapter.md §2 — Path A (copy codex_scaffold/ in), Path B (global $PATH),
-   or Path C (CODEX_BRIDGE env). Canonical impl lives in sibling claude-codex-orchestration.
+   or Path C (CODEX_BRIDGE env). Canonical impl: git@github.com:ahnaflodhi/claude-codex-orchestration.git
+   — clone it alongside KB-Orchestrator-Core; its codex_scaffold/bin/codex-task-bridge probes at protocol 2.
 6. Set agents.config.yaml adapters.codex-bridge.binary_path to the installed bridge. Stock role
    bindings: codex-audit→truthsayer, codex-eval→evaluator (§3). For a Codex research/eval stream,
    declare a codex executor agent explicitly.
@@ -63,7 +64,7 @@ first ledger DISPATCH/CONSUME rows. Flag any step that did not pass rather than 
 ## Two honest caveats for the operator
 
 - The prompt cites the canonical guides instead of duplicating them — keep those guides current.
-- Upstream `agents.config.yaml` sets `binary_path: ../claude-codex-orchestration/codex_scaffold/bin/codex-task-bridge`, but the sibling's actual layout may be `../claude-codex-orchestration/bin/`. Until the adopter sets a correct `binary_path`, the stock value resolves to the **degraded `codex exec`** path (step 8) — usable, but not plug-and-play.
+- Upstream `agents.config.yaml` sets `binary_path: ../claude-codex-orchestration/codex_scaffold/bin/codex-task-bridge` — this is CORRECT when the bridge repo (`git@github.com:ahnaflodhi/claude-codex-orchestration.git`) is cloned alongside KB-Orchestrator-Core: the binary is present there and its `version`/`capabilities` probes return protocol 2 (no codex auth needed). Adopters who install the bridge elsewhere (Path A/B/C) update `binary_path` to match. Only if the binary cannot be resolved does the adapter fall back to the contract-sanctioned **degraded `codex exec`** path (step 8).
 
 ## Cross-references
 

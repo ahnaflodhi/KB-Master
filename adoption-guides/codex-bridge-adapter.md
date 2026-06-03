@@ -10,7 +10,7 @@ KB-Orchestrator-Core defines the **adapter slot**: the contract every codex-brid
 
 The **canonical implementation** of that slot lives in a separate, focused project:
 
-> **`claude-codex-orchestration`** — ships the `codex-task-bridge` CLI, six Claude Code slash commands (`/codex-design`, `/codex-implement`, `/codex-review`, `/codex-status`, `/codex-result`, `/codex-list`), and a normative protocol-versioning + capability-discovery contract. Authoritative spec: `BRIDGE_REQUIREMENTS.md` in that repo.
+> **`claude-codex-orchestration`** (`git@github.com:ahnaflodhi/claude-codex-orchestration.git`) — ships the `codex-task-bridge` CLI, six Claude Code slash commands (`/codex-design`, `/codex-implement`, `/codex-review`, `/codex-status`, `/codex-result`, `/codex-list`), and a normative protocol-versioning + capability-discovery contract. Authoritative spec: `BRIDGE_REQUIREMENTS.md` in that repo. Substitute this URL for the `<claude-codex-orchestration-url>` placeholders in Section 2.
 
 Why two projects? The bridge contract is independently useful — someone may want a Claude↔Codex bridge without the 70-file framework attached. KB-Orchestrator-Core is the upstream framework that owns roles + dispatch + audit + INV 9/10; `claude-codex-orchestration` ships one slot's implementation.
 

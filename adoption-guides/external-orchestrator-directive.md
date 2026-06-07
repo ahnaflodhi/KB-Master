@@ -139,9 +139,9 @@ Produce a probe response that names which INV 10 enforcement mode you implement 
 
 ## Section 4 — Pinning
 
-**Pin to `v3.1.0`** — the current release tag and recommended adoption surface. Both `v3.0.0` and `v3.1.0` are tagged on `origin`; `v3.1.0` carries the workflow-hardening fixes (canonical `pipeline_state` enum, citation-completeness gate) plus the `tools/verify-config.sh` completeness gate. The Phase-6b soak was **retired** (see `adoption-guides/static-regeneration-gate.md`); `SYSTEM-BLUEPRINT.md` is now a compiled view regenerated from Layer-2, and the standing CI gates — `verify-blueprint` (exact reproducibility), `verify-no-monolith`, `verify-config` — hold on every push.
+**Pin to `v3.2.0`** — the current release tag and recommended adoption surface. `v3.0.0`, `v3.1.0`, and `v3.2.0` are tagged on `origin`. `v3.2.0` adds the **codex-bridge protocol-3** adapter contract (ephemeral sub-agents + persistent project-local agents) on top of v3.1.0's workflow-hardening fixes (canonical `pipeline_state` enum, citation-completeness gate) and the `tools/verify-config.sh` completeness gate. The Phase-6b soak was **retired** (see `adoption-guides/static-regeneration-gate.md`); `SYSTEM-BLUEPRINT.md` is now a compiled view regenerated from Layer-2, and the standing CI gates — `verify-blueprint` (exact reproducibility), `verify-no-monolith`, `verify-config` — hold on every push.
 
-**Do not pin to `main` for production adoption.** Pin to the `v3.1.0` tag (or a later release tag once published); `main` may carry in-flight work between releases.
+**Do not pin to `main` for production adoption.** Pin to the `v3.2.0` tag (or a later release tag once published); `main` may carry in-flight work between releases.
 
 ---
 

@@ -251,14 +251,14 @@ git sparse-checkout init --cone
 git sparse-checkout set INDEX.md bundles 00-overview 10-pipeline 20-roles \
   30-knowledge 40-runtime 50-adapters 60-schemas 80-status agents.config.yaml \
   commands tools pipeline adoption-guides
-git checkout v3.1.0    # current release tag (recommended adoption surface) — see directive guide § "Pinning"
+git checkout v3.2.0    # current release tag (recommended adoption surface) — see directive guide § "Pinning"
 ```
 
 Submodule alternative (upstream sync without copying):
 
 ```bash
 git submodule add <KB-Orchestrator-Core-url> vendor/kb-orc
-git -C vendor/kb-orc checkout v3.1.0    # current release tag
+git -C vendor/kb-orc checkout v3.2.0    # current release tag
 ```
 
 #### Post-vendoring smoke test

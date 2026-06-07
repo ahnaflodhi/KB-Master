@@ -6,7 +6,7 @@ audience: [orchestrator, planner, evaluator, human]
 also_needed_by: [meta_review]
 status: active
 version: 2.8.1
-last_reviewed: 2026-05-04
+last_reviewed: 2026-06-07
 extracted_from:
   source: SYSTEM-BLUEPRINT-v2.8.md
   sections: ["§25", "§24", "§19 v2.8 addendum", "§2 Invariant 9"]
@@ -76,6 +76,7 @@ Authoritative source: `codex-task-bridge capabilities --json` at runtime (when p
 | `meta.env` required keys (`protocol`, `bridge_subcommand`, terminal `finished_at` + `exit_code`) | **shipped** (protocol 2) | 2026-05-12. Every job-creating dispatch records the new keys. |
 | Error contract (exits 0/2/3 + `BRIDGE_ERR_CODE=<slug>` stderr prefix) | **partial** (protocol 2) | 2026-05-12. `invalid_input` (exit 2) and `unsupported_capability` (exit 3) shipped. `codex_exec_failure` prefix deferred — downstream Codex failures still surface as non-zero exits without the prefix (orchestrators treat absence of prefix as MVP/Codex failure and degrade per BRIDGE_REQUIREMENTS § Versioning & capability discovery). |
 | `--output-schema` + `output.json` artifact | **shipped** (protocol 2) | 2026-05-12. Bridge forwards `--output-schema FILE` to `codex exec` as a global flag and copies the schema-conformant final message into `<job_dir>/output.json`. Replaces client-side validation in `_delegate.md` step 8 when a structured artifact is wanted. |
+| `subagent run` + `agent create/run/remember/list/show` (sub-agents + persistent project-local agents) | **shipped** (protocol 3) | 2026-06-07 (sibling `d3f2965`). One-off tracked sub-agent jobs + persistent named profiles (`system_prompt.md`/`memory.md`/`knowledge_roots.txt` under `runtime/codex-agents/<name>/`); `meta.env` adds `agent_name`+`subagent_kind`. `host_access` unchanged (false/false); each `agent run` is one tracked job (no autonomous daemons). |
 | `--mode review` (`codex exec review`) | **planned** | Preferred mode for `codex-eval` once available. Currently uses `--mode design` with prompt-level review framing. |
 | `--sandbox` first-class | **planned** | Currently sandbox is mode-default per BRIDGE_REQUIREMENTS table. |
 | `resume`, `raw`, `--profile`, `--config`, `--add-dir`, `--cd`, `--image`, `--ephemeral`, `--ignore-user-config`, `--ignore-rules`, `--enable`, `--disable` | **planned** | Per BRIDGE_REQUIREMENTS planned-surface table. |

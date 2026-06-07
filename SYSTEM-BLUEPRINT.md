@@ -1,11 +1,11 @@
 # Agent Orchestration + Self-Learning Knowledge Base — System Blueprint
 
-> ⚠️ **Regenerated from Layer-2 sources by `tools/build-blueprint.sh` on 2026-06-03T11:33:05Z.**
+> ⚠️ **Regenerated from Layer-2 sources by `tools/build-blueprint.sh` on 2026-06-07T15:50:00Z.**
 > This file is a **compiled view** for backwards compatibility. **DO NOT EDIT DIRECTLY** — modify the relevant file under `00-overview/`–`80-status/` and re-run `tools/build-blueprint.sh --write`.
 > Runtime entrypoint for agents: `INDEX.md` (Layer-3) + `bundles/<role>.yaml`.
 
-**Version**: 3.1.0 | **Owner**: KB-Orchestrator-Core (Claude Code)
-**Regenerated**: 2026-06-03T11:33:05Z
+**Version**: 3.2.0 | **Owner**: KB-Orchestrator-Core (Claude Code)
+**Regenerated**: 2026-06-07T15:50:00Z
 **Source layout**: 00-overview,10-pipeline,20-roles,30-knowledge,40-runtime,50-adapters,60-schemas,70-adoption,80-status
 
 ---
@@ -2912,7 +2912,7 @@ This is the at-a-glance grid the orchestrator consults at §25 Step 2 PROBE and 
 |---|---|---|---|---|
 | `claude-orchestrator` | `native-orchestrator` | (none — singleton) | the running Claude Code session | n/a — assumed available |
 | `claude-native` | `claude-native` | `subagent`, `sdk` | Task tool (subagent) or `@anthropic-ai/claude-agent-sdk` on PATH (sdk) | capability check via SDK presence |
-| `codex-bridge` | `cli-bridge` | `design`, `implement`, (planned: `review`, `raw`) | `../claude-codex-orchestration/codex_scaffold/bin/codex-task-bridge` | `version` first, then `capabilities --json` if protocol ≥ 2 |
+| `codex-bridge` | `cli-bridge` | `design`, `implement`, `subagent.run`, `agent.{create,run,remember,list,show}`; (planned: `review`, `raw`) | `../claude-codex-orchestration/codex_scaffold/bin/codex-task-bridge` (protocol 3) | `version` first, then `capabilities --json` if protocol ≥ 2 |
 
 ### Probe response (§25 + v2.9 + v2.10)
 
@@ -2922,20 +2922,22 @@ This is the at-a-glance grid the orchestrator consults at §25 Step 2 PROBE and 
 | `claude-native` (subagent) | true | n/a | true (inherited from parent harness) | true | true |
 | `claude-native` (sdk) | iff SDK present | n/a | true (REQUIRES per-process pre-tool guard registration) | true | true |
 | `codex-bridge` (MVP) | true (probed inline) | 1 | `orchestrator-side` (orchestrator emits fact block per dispatch) | **false** | **false** |
-| `codex-bridge` (≥ 2) | true | 2+ | per `capabilities --json` | per `capabilities --json` | per `capabilities --json` |
+| `codex-bridge` (≥ 3) | true | 3 | `orchestrator-side` | **false** | **false** |
 
-Default-deny: missing/partial `host_access` subfields are treated as `false` per `policy.assume_host_access_false_unless_probed: true`.
+Default-deny: missing/partial `host_access` subfields are treated as `false` per `policy.assume_host_access_false_unless_probed: true`. **Protocol 3 added the sub-agent/persistent-agent surface only; it did not change `host_access` — the role-denial rows below are unchanged.**
 
 ### Dispatch contract (§25 Step 4)
 
-Every adapter accepts `(role, prompt, sandbox, model, inputs[], expected_schema)` and returns a unique `job_id` (string). Sandbox precedence per BRIDGE_REQUIREMENTS: explicit `--sandbox` > `--full-auto` > mode default.
+Every adapter accepts `(role, prompt, sandbox, model, inputs[], expected_schema)` and returns a unique `job_id` (string). For `codex-bridge`, sandbox is selected by the `--mode` mapping (first-class `--sandbox` is planned, not yet accepted); other adapters use their own sandbox conventions.
 
 | Adapter | Sync / async | Sandbox values accepted | Default sandbox if omitted |
 |---|---|---|---|
 | `claude-orchestrator` | inline (synchronous) | host shell only | host shell |
 | `claude-native` (subagent) | sync | inherits parent | parent's |
 | `claude-native` (sdk) | async (job) | per SDK config | `read-only` |
-| `codex-bridge` | sync (`run`) or async (`start`) | `read-only`, `workspace-write`, `workspace-write --full-auto`, `danger-full-access` | mode default (`design` → read-only, `implement` → workspace-write + full-auto) |
+| `codex-bridge` | sync (`run`) or async (`start`/`--background`) | only `read-only` (`design`) + `workspace-write --full-auto` (`implement`) reachable today; the other Codex values need first-class `--sandbox` (planned) | mode default (`design` → read-only, `implement` → workspace-write + full-auto) |
+
+Sub-agent (`subagent run`) and persistent-agent (`agent run`) dispatches reuse the same `(role, prompt, sandbox, model, …)` shape and the same mode→sandbox values.
 
 ### Result + cancel
 
@@ -2958,7 +2960,9 @@ The orchestrator MUST refuse to bind a role to an adapter that does not satisfy 
 | `kb_linter` (citation-health Rule #9 against host docs) | `host_access.loopback_tcp: true` if docs are local-served | adapters lacking the capability |
 | any state-mutating role | `enforces_pre_action_facts: true` (or `orchestrator-side`) | adapters reporting `false` |
 
-Read-only roles (planner, truthsayer, pre-check, evaluator-research, wiki_query, meta_review) have no host_access requirement and can be bound to any adapter that reports `available: true`.
+**Protocol 3 changes no denial:** `executor.commercial` and `evaluator` (commercial) remain denied (`host_access` false/false), and persistent/ephemeral Codex agents inherit the same sandbox + host_access posture, so they grant no new host capability.
+
+Read-only roles (planner, truthsayer, pre-check, evaluator-research, wiki_query, meta_review) have no host_access requirement and can be bound to any adapter that reports `available: true`. A persistent `agent` MAY be bound to a read-only role (`truthsayer`, `evaluator-research`, `meta_review`) as a richer, memory-carrying profile — it is still just a `read-only` (`--mode design`) tracked job and changes no capability gate.
 
 ### What the matrix does NOT decide
 
@@ -3184,6 +3188,7 @@ Adopters on non-Claude-Code harnesses (Claude Agent SDK, custom CLI) MUST regist
 | `bootstrap_probe.timeout_seconds` | 2 |
 | `fallback_protocol` | 1 (MVP — assumed when probe fails) |
 | `artifact_dir_root` | `../claude-codex-orchestration/codex_scaffold/runtime/codex-jobs/` |
+| `agent_storage_root` | `../claude-codex-orchestration/codex_scaffold/runtime/codex-agents/` |
 
 The codex-bridge adapter wraps the `codex-task-bridge` CLI. It is the first non-Claude adapter and the steady-state cross-family Evaluator + TruthSayer pairing for projects whose Executor is Claude.
 
@@ -3194,21 +3199,24 @@ The codex-bridge adapter wraps the `codex-task-bridge` CLI. It is the first non-
 Per BRIDGE_REQUIREMENTS bootstrap rule: probe `version` first; non-zero exit → treat as protocol 1. Protocol ≥ 2 → call `capabilities --json` for the supported surface. The orchestrator does NOT call non-shipped bridge surface (`--mode review`, `raw`, `resume`, `--json-events`, `--sandbox`/`--full-auto` first-class passthrough) unless the probe confirms them.
 
 ```yaml
-# Protocol 2 — current (canonical bridge at ../claude-codex-orchestration/codex_scaffold/bin/codex-task-bridge)
+# Protocol 3 — current (canonical bridge at ../claude-codex-orchestration/codex_scaffold/bin/codex-task-bridge)
 available: true
-protocol: 2
-capabilities: ["start", "run", "status", "tail", "result", "list", "help", "version", "capabilities"]
-passthroughs_advertised: ["--model", "--output-schema"]
+protocol: 3
+capabilities: ["run", "start", "subagent", "agent", "status", "tail", "result", "list", "version", "capabilities"]
+subagent_actions: ["run"]
+agent_actions: ["create", "run", "remember", "list", "show"]
+agent_storage: runtime/codex-agents
+passthroughs_advertised: ["--model", "--output-schema"]    # --sandbox still NOT advertised
 modes_advertised: ["design", "implement"]
 enforces_pre_action_facts: orchestrator-side    # bridge has no in-process callback
 host_access:
-  loopback_tcp: false                           # Stage-4 evidence — see below
+  loopback_tcp: false                           # Stage-4 evidence — see below; UNCHANGED at protocol 3
   unix_sockets: false
 pre_action_fact_mechanism: orchestrator-emitted-block
 cached_protocol_probe:
-  protocol: 2
-  probed_at: 2026-05-12
-  notes: "protocol 2 shipped 2026-05-12: version + capabilities --json probes live; --output-schema passthrough emits output.json artifact; meta.env carries protocol + bridge_subcommand + terminal finished_at + exit_code; error-contract slugs invalid_input (exit 2) + unsupported_capability (exit 3) shipped. Still planned: --mode review, raw, resume, --json-events, --sandbox first-class, codex_exec_failure error-prefix slice."
+  protocol: 3
+  probed_at: 2026-06-07
+  notes: "protocol 3 shipped 2026-06-07: subagent run + agent create/run/remember/list/show; per-agent state under runtime/codex-agents/<name>/; meta.env adds agent_name + subagent_kind. Still planned: --mode review, raw, resume, --json-events, --sandbox first-class, codex_exec_failure error-prefix slice."
 ```
 
 ### Dispatch contract
@@ -3219,19 +3227,22 @@ cached_protocol_probe:
 | `--mode implement` | `workspace-write` + `--full-auto` | `executor.research` cross-family experiments |
 | `--mode review` | `read-only` (preferred for `evaluator`) | **planned** — protocol ≥ 2 only |
 | `raw` | mode default | **planned** — protocol ≥ 2 only |
+| `subagent run` | mode default (design→read-only, implement→workspace-write+full-auto) | one-off cross-family sub-agent jobs (e.g. a scoped audit/research delegate) |
+| `agent run` | mode default (as above) | persistent named profile invoked as a tracked job (durable system-prompt + memory + knowledge-roots) |
 
-Sandbox precedence per BRIDGE_REQUIREMENTS: explicit `--sandbox <value>` > `--full-auto` > mode default. Slash commands SHOULD always pass `--sandbox` explicitly; relying on the mode default is a slash-command bug, not a bridge feature.
+Sandbox is selected by `--mode` (design→`read-only`, implement→`workspace-write --full-auto`). The bridge does **not** accept a first-class `--sandbox` passthrough — it is not in advertised `passthroughs`, and `--sandbox` first-class remains **planned**. Until it ships, the `--mode` mapping is the only sandbox control; sub-agent and persistent-agent dispatches inherit the same mode→sandbox semantics.
 
 Argument mapping:
 
 | Field | Behaviour |
 |---|---|
 | `role` | Mapped to a bridge sub-mode + sandbox per the matrix above |
-| `prompt` | Written to a temp file, passed via `--prompt-file=<path>` |
-| `sandbox` | Passed verbatim as `--sandbox <value>` |
+| `prompt` | Passed as positional args after `--` (e.g. `run --mode design -- "<prompt>"`), or via stdin. There is **no** `--prompt-file` flag. |
+| `sandbox` | Selected by `--mode` (NOT passed as `--sandbox` — not an advertised passthrough). First-class `--sandbox` is planned; until then the mode mapping is the only control. |
 | `model` | Passed via `--model <id>` (currently `gpt-5.4` default) |
 | `inputs[]` | File paths in the prompt; bridge reads them via Codex's filesystem access |
 | `expected_schema` | Schema validation is client/orchestrator-side (`_delegate.md` Step 8). Bridge `--output-schema FILE` passthrough shipped 2026-05-12 (protocol 2): when set, the bridge forwards the schema file to Codex and copies `last_message.txt` to `<job_dir>/output.json`. The bridge does NOT validate JSON or schema conformance — `output.json` presence means the directive was forwarded and a final message captured, not that the artifact is valid. Consumers must validate before use. |
+| `agent_name` / `subagent_kind` | Recorded in `meta.env` and surfaced by `status` (empty for ordinary `run`/`start` jobs). `--kind` labels a sub-agent/profile (`development`, `audit`, `research`, `web-research`, `persona`, …); persistent-agent profile fields (`--system-prompt[-file]`, `--knowledge-root`, `--description`) are set at `agent create` time. |
 
 ### Result contract
 
@@ -3240,7 +3251,7 @@ Per BRIDGE_REQUIREMENTS job-artifact contract — files under `<job_dir>/`:
 | File | Purpose |
 |---|---|
 | `prompt.txt` | The prompt as sent |
-| `meta.env` | `protocol`, `bridge_subcommand`, `mode`, `model`, `started_at`, `finished_at`, `exit_code` (ISO-8601 timestamps) |
+| `meta.env` | `protocol` (now stamps `3`), `bridge_subcommand`, `mode`, `model`, `started_at`, `finished_at`, `exit_code` (ISO-8601 timestamps), plus `agent_name` + `subagent_kind` (empty for ordinary `run`/`start` jobs) |
 | `status` | `running` / `succeeded` / `failed` |
 | `pid` | Backgrounded jobs only |
 | `exit_code`, `finished_at` | When terminal |
@@ -3251,27 +3262,44 @@ Per BRIDGE_REQUIREMENTS job-artifact contract — files under `<job_dir>/`:
 
 Artifact file names are part of the public contract; the bridge MUST NOT rename them within a protocol version. The orchestrator computes `output_hash = sha256(last_message.txt)` for the consume ledger row's AUTH gate.
 
+#### Persistent-agent state (protocol 3)
+
+`agent create NAME` writes a persistent profile under `runtime/codex-agents/<name>/`:
+
+| File | Purpose |
+|---|---|
+| `agent.env` | profile metadata (kind, mode, model, description) |
+| `system_prompt.md` | the profile's injected system prompt |
+| `memory.md` | project-local memory (`agent remember NAME -- "<text>"` appends) |
+| `knowledge_roots.txt` | declared knowledge-root dirs |
+| `sessions.jsonl` | one line per `agent run` invocation |
+| `artifacts/` | per-run artifact outputs |
+
+These six `agent_files` names are part of the public contract within protocol 3 — additive-only, never renamed. `agent run NAME` invokes the profile as a single tracked Codex job, injecting its system prompt + memory + knowledge roots into the directive.
+
 ### Sandbox semantics
 
-Per BRIDGE_REQUIREMENTS: `read-only`, `workspace-write`, `workspace-write --full-auto`, `danger-full-access` are the four values Codex itself accepts. The bridge does NOT refuse a sandbox value Codex accepts. Sandbox controls filesystem and approval-mode behaviour ONLY — see host_access section below.
+Per BRIDGE_REQUIREMENTS: `read-only`, `workspace-write`, `workspace-write --full-auto`, `danger-full-access` are the four values Codex itself accepts. The bridge currently exposes only **two** of them, via the `--mode` mapping — `design` → `read-only` and `implement` → `workspace-write --full-auto`. The other values (`workspace-write` without full-auto, `danger-full-access`) are NOT reachable through the bridge until first-class `--sandbox` selection ships (planned). Sandbox controls filesystem and approval-mode behaviour ONLY — see host_access section below.
 
 ### Failure modes
 
 - **Bridge binary not on PATH** → probe fails → adapter `available: false` → orchestrator routes role inline (or escalates if no inline fallback).
-- **Bridge protocol < required for sub-mode** (e.g. role wants `--mode review` but probe says protocol 1) → degrade per BRIDGE bootstrap rules: try `raw -- <equivalent codex exec args>`; if also unavailable, fall back to inline.
+- **Bridge protocol < required for sub-mode** (e.g. role wants `--mode review` but probe says protocol 1, or a `subagent`/`agent` call against a protocol < 3 bridge) → degrade per BRIDGE bootstrap rules. Since `raw` is non-shipped (see § What this adapter MUST NOT do), do NOT route through `raw`: fall back to the contract-sanctioned degraded path — direct `codex exec` with the equivalent mode/args, recorded as `adapter_degraded` — or to orchestrator-inline if that too is unavailable.
 - **`<job_dir>/exit_code != 0`** → consume verdict `rejected-auth`; re-delegate up to `validation.re_delegate_max_attempts`.
 - **`last_message.txt` missing or empty** → consume verdict `rejected-auth`; re-delegate.
 - **Sandbox boundary error** (e.g. bridge invoked from one CWD, target path outside that scope): observed in v3.0 Phase 2 once; recovered by re-invoking with absolute paths from KB-Orchestrator-Core CWD.
 
 ### Pre-action fact enforcement (Invariant 10)
 
-`enforces_pre_action_facts: orchestrator-side`. The bridge has no in-process pre-tool callback. The orchestrator (claude-main) emits the §25-mandated 4-fact block as user-visible text immediately before each `codex-task-bridge run|start` invocation. This is the v2.9 PROPAGATION mechanism for adapters that cannot self-enforce.
+`enforces_pre_action_facts: orchestrator-side`. The bridge has no in-process pre-tool callback. The orchestrator (claude-main) emits the §25-mandated 4-fact block as user-visible text immediately before each **Codex-invoking dispatch: `run`, `start`, `subagent run`, and `agent run`**. This is the v2.9 PROPAGATION mechanism for adapters that cannot self-enforce.
 
-The orchestrator-emitted-block enforcement is **permanent for this adapter slot**. Per `../claude-codex-orchestration/BRIDGE_REQUIREMENTS.md` § Non-goals, the bridge by design does NOT impose orchestration policy — no future protocol-2 in-process callback is planned. Adopters MUST treat orchestrator-side enforcement as the steady-state mechanism, not a temporary stopgap.
+`agent create`, `agent remember`, `agent list`, `agent show`, `version`, `capabilities`, `status`, `tail`, `result`, `list` do **not** invoke `codex exec` and are therefore **not** INV-10 dispatch points. `create`/`remember` are local state mutations — record them in the execution log, not as a four-fact dispatch.
+
+The orchestrator-emitted-block enforcement is **permanent for this adapter slot**. Per `../claude-codex-orchestration/BRIDGE_REQUIREMENTS.md` § Non-goals, the bridge by design does NOT impose orchestration policy — no future in-process callback is planned. Adopters MUST treat orchestrator-side enforcement as the steady-state mechanism, not a temporary stopgap.
 
 ### Host-local service access (v2.10)
 
-`host_access: {loopback_tcp: false, unix_sockets: false}`. **Stage-4 evidence**: a `--mode implement` Codex job launched specifically to run `psql` reported the database cluster as unavailable, despite holding `workspace-write` and `--full-auto`. The bridge correctly applied the sandbox; the failure was orchestrator-side mis-modeling. Until bridge protocol exposes `capabilities --json` with explicit `host_access`, deny-deny is the conservative default.
+`host_access: {loopback_tcp: false, unix_sockets: false}` — **unchanged at protocol 3** (the sub-agent/persistent-agent surface added no host capability; ephemeral and persistent agents inherit the same sandbox + host_access posture). **Stage-4 evidence**: a `--mode implement` Codex job launched specifically to run `psql` reported the database cluster as unavailable, despite holding `workspace-write` and `--full-auto`. The bridge correctly applied the sandbox; the failure was orchestrator-side mis-modeling. Until bridge protocol exposes `capabilities --json` with explicit `host_access`, deny-deny is the conservative default.
 
 **Degradation pattern**: when a role needs host-local services, the orchestrator (`claude-orchestrator`, which has full host access) runs the host call itself and pre-injects the result into the dispatch as read-only evidence. This is documented in `40-runtime/bootstrap-and-degradation.md`.
 
@@ -3279,8 +3307,10 @@ The orchestrator-emitted-block enforcement is **permanent for this adapter slot*
 
 - MUST NOT be assigned to `roles.orchestrator`.
 - MUST NOT be assigned to `executor.commercial` or `evaluator` (commercial project) until `host_access` is true/true.
-- MUST NOT call non-MVP bridge subcommands (`--mode review`, `raw`, `--output-schema`, `--json-events`) when the probe says protocol 1.
+- MUST NOT call non-shipped bridge surface (`--mode review`, `raw`, `resume`, `--json-events`) regardless of protocol level, and MUST NOT call `subagent`/`agent` when the probe says protocol < 3.
 - MUST NOT pass `--sandbox` values the bridge has not advertised in `capabilities`.
+- MUST NOT treat a persistent agent as an autonomous/long-running process — each `agent run` is one tracked job, verified like any other.
+- MUST NOT allow a delegated Codex job to create unmanaged bridge children; any executor-proposed fan-out MUST round-trip through the orchestrator (the bridge never accepts a call originating from inside a sandbox).
 - MUST NOT silently rename or omit artifact files under `<job_dir>/`.
 - MUST NOT swallow Codex's stderr — record to consume ledger row's `notes:` field.
 - MUST NOT bypass the orchestrator-emitted fact block before each dispatch (Invariant 10).
@@ -3818,6 +3848,7 @@ Authoritative source: `codex-task-bridge capabilities --json` at runtime (when p
 | `meta.env` required keys (`protocol`, `bridge_subcommand`, terminal `finished_at` + `exit_code`) | **shipped** (protocol 2) | 2026-05-12. Every job-creating dispatch records the new keys. |
 | Error contract (exits 0/2/3 + `BRIDGE_ERR_CODE=<slug>` stderr prefix) | **partial** (protocol 2) | 2026-05-12. `invalid_input` (exit 2) and `unsupported_capability` (exit 3) shipped. `codex_exec_failure` prefix deferred — downstream Codex failures still surface as non-zero exits without the prefix (orchestrators treat absence of prefix as MVP/Codex failure and degrade per BRIDGE_REQUIREMENTS § Versioning & capability discovery). |
 | `--output-schema` + `output.json` artifact | **shipped** (protocol 2) | 2026-05-12. Bridge forwards `--output-schema FILE` to `codex exec` as a global flag and copies the schema-conformant final message into `<job_dir>/output.json`. Replaces client-side validation in `_delegate.md` step 8 when a structured artifact is wanted. |
+| `subagent run` + `agent create/run/remember/list/show` (sub-agents + persistent project-local agents) | **shipped** (protocol 3) | 2026-06-07 (sibling `d3f2965`). One-off tracked sub-agent jobs + persistent named profiles (`system_prompt.md`/`memory.md`/`knowledge_roots.txt` under `runtime/codex-agents/<name>/`); `meta.env` adds `agent_name`+`subagent_kind`. `host_access` unchanged (false/false); each `agent run` is one tracked job (no autonomous daemons). |
 | `--mode review` (`codex exec review`) | **planned** | Preferred mode for `codex-eval` once available. Currently uses `--mode design` with prompt-level review framing. |
 | `--sandbox` first-class | **planned** | Currently sandbox is mode-default per BRIDGE_REQUIREMENTS table. |
 | `resume`, `raw`, `--profile`, `--config`, `--add-dir`, `--cd`, `--image`, `--ephemeral`, `--ignore-user-config`, `--ignore-rules`, `--enable`, `--disable` | **planned** | Per BRIDGE_REQUIREMENTS planned-surface table. |

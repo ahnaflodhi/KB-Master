@@ -17,8 +17,8 @@
 # assignment is a configuration error and the orchestrator will refuse to start.
 
 schema_version: 3                 # v3.0 Phase 6b — adds REQUIRED `family` field on every agent (INV 1.A enforcement)
-config_revision: 6                # bump on every edit; recorded in verification ledger
-last_updated: 2026-06-03
+config_revision: 7                # bump on every edit; recorded in verification ledger
+last_updated: 2026-06-07
 
 # ---------------------------------------------------------------------------
 # 1. ADAPTERS — protocol-layer drivers. One per agent type.
@@ -100,9 +100,9 @@ adapters:
     # The orchestrator MAY trust this value within the same calendar day; otherwise re-probe.
     # Re-run the probe (claude-main inline) when bridge binary mtime changes or weekly.
     cached_protocol_probe:
-      protocol: 1                                       # MVP — `version` subcommand returned non-zero per BRIDGE_REQUIREMENTS bootstrap
-      probed_at: 2026-05-04
-      notes: "version subcommand not implemented; available: run/start/status/tail/result/list/help. No --sandbox first-class, no --mode review, no raw, no capabilities --json. Slash commands MUST guard non-MVP surface behind this protocol value."
+      protocol: 3                                       # protocol 3 verified live 2026-06-07 (sibling d3f2965): version → 3; capabilities --json advertises subagent/agent
+      probed_at: 2026-06-07
+      notes: "protocol 3 shipped (sibling d3f2965): subcommands run/start/subagent/agent/status/tail/result/list/version/capabilities; subagent_actions [run]; agent_actions [create,run,remember,list,show]; agent_storage runtime/codex-agents; meta.env adds agent_name + subagent_kind. passthroughs --model/--output-schema (no --sandbox first-class). Still planned: --mode review, raw, resume, --json-events, --sandbox first-class. Slash commands MUST guard subagent/agent behind protocol >= 3."
 
   # Reserved for future agents. Each block below is a template; uncomment and
   # fill in when the adapter implementation lands. Do not enable an adapter

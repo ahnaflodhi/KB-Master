@@ -11,8 +11,8 @@ also_needed_by:
   - meta_review
   - apply_meta
 status: stable
-version: 2.10
-last_reviewed: 2026-05-04
+version: 3.0
+last_reviewed: 2026-06-07
 extracted_from:
   source: SYSTEM-BLUEPRINT-v2.10.md
   sections: ["§25 Adapter contract", "§25 Bridge adapter — Codex specifics", "§25 Sandbox flags do not imply host-local service access (v2.10)"]
@@ -28,7 +28,7 @@ max_lines: 150
 directives:
   must_count: 3
   should_count: 2
-  may_count: 1
+  may_count: 2
 ---
 
 ## Adapter Capability Matrix
@@ -41,7 +41,7 @@ This is the at-a-glance grid the orchestrator consults at §25 Step 2 PROBE and 
 |---|---|---|---|---|
 | `claude-orchestrator` | `native-orchestrator` | (none — singleton) | the running Claude Code session | n/a — assumed available |
 | `claude-native` | `claude-native` | `subagent`, `sdk` | Task tool (subagent) or `@anthropic-ai/claude-agent-sdk` on PATH (sdk) | capability check via SDK presence |
-| `codex-bridge` | `cli-bridge` | `design`, `implement`, (planned: `review`, `raw`) | `../claude-codex-orchestration/codex_scaffold/bin/codex-task-bridge` | `version` first, then `capabilities --json` if protocol ≥ 2 |
+| `codex-bridge` | `cli-bridge` | `design`, `implement`, `subagent.run`, `agent.{create,run,remember,list,show}`; (planned: `review`, `raw`) | `../claude-codex-orchestration/codex_scaffold/bin/codex-task-bridge` (protocol 3) | `version` first, then `capabilities --json` if protocol ≥ 2 |
 
 ### Probe response (§25 + v2.9 + v2.10)
 
@@ -51,20 +51,22 @@ This is the at-a-glance grid the orchestrator consults at §25 Step 2 PROBE and 
 | `claude-native` (subagent) | true | n/a | true (inherited from parent harness) | true | true |
 | `claude-native` (sdk) | iff SDK present | n/a | true (REQUIRES per-process pre-tool guard registration) | true | true |
 | `codex-bridge` (MVP) | true (probed inline) | 1 | `orchestrator-side` (orchestrator emits fact block per dispatch) | **false** | **false** |
-| `codex-bridge` (≥ 2) | true | 2+ | per `capabilities --json` | per `capabilities --json` | per `capabilities --json` |
+| `codex-bridge` (≥ 3) | true | 3 | `orchestrator-side` | **false** | **false** |
 
-Default-deny: missing/partial `host_access` subfields are treated as `false` per `policy.assume_host_access_false_unless_probed: true`.
+Default-deny: missing/partial `host_access` subfields are treated as `false` per `policy.assume_host_access_false_unless_probed: true`. **Protocol 3 added the sub-agent/persistent-agent surface only; it did not change `host_access` — the role-denial rows below are unchanged.**
 
 ### Dispatch contract (§25 Step 4)
 
-Every adapter accepts `(role, prompt, sandbox, model, inputs[], expected_schema)` and returns a unique `job_id` (string). Sandbox precedence per BRIDGE_REQUIREMENTS: explicit `--sandbox` > `--full-auto` > mode default.
+Every adapter accepts `(role, prompt, sandbox, model, inputs[], expected_schema)` and returns a unique `job_id` (string). For `codex-bridge`, sandbox is selected by the `--mode` mapping (first-class `--sandbox` is planned, not yet accepted); other adapters use their own sandbox conventions.
 
 | Adapter | Sync / async | Sandbox values accepted | Default sandbox if omitted |
 |---|---|---|---|
 | `claude-orchestrator` | inline (synchronous) | host shell only | host shell |
 | `claude-native` (subagent) | sync | inherits parent | parent's |
 | `claude-native` (sdk) | async (job) | per SDK config | `read-only` |
-| `codex-bridge` | sync (`run`) or async (`start`) | `read-only`, `workspace-write`, `workspace-write --full-auto`, `danger-full-access` | mode default (`design` → read-only, `implement` → workspace-write + full-auto) |
+| `codex-bridge` | sync (`run`) or async (`start`/`--background`) | only `read-only` (`design`) + `workspace-write --full-auto` (`implement`) reachable today; the other Codex values need first-class `--sandbox` (planned) | mode default (`design` → read-only, `implement` → workspace-write + full-auto) |
+
+Sub-agent (`subagent run`) and persistent-agent (`agent run`) dispatches reuse the same `(role, prompt, sandbox, model, …)` shape and the same mode→sandbox values.
 
 ### Result + cancel
 
@@ -87,7 +89,9 @@ The orchestrator MUST refuse to bind a role to an adapter that does not satisfy 
 | `kb_linter` (citation-health Rule #9 against host docs) | `host_access.loopback_tcp: true` if docs are local-served | adapters lacking the capability |
 | any state-mutating role | `enforces_pre_action_facts: true` (or `orchestrator-side`) | adapters reporting `false` |
 
-Read-only roles (planner, truthsayer, pre-check, evaluator-research, wiki_query, meta_review) have no host_access requirement and can be bound to any adapter that reports `available: true`.
+**Protocol 3 changes no denial:** `executor.commercial` and `evaluator` (commercial) remain denied (`host_access` false/false), and persistent/ephemeral Codex agents inherit the same sandbox + host_access posture, so they grant no new host capability.
+
+Read-only roles (planner, truthsayer, pre-check, evaluator-research, wiki_query, meta_review) have no host_access requirement and can be bound to any adapter that reports `available: true`. A persistent `agent` MAY be bound to a read-only role (`truthsayer`, `evaluator-research`, `meta_review`) as a richer, memory-carrying profile — it is still just a `read-only` (`--mode design`) tracked job and changes no capability gate.
 
 ### What the matrix does NOT decide
 

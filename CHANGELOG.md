@@ -1,5 +1,25 @@
 # Changelog — SYSTEM-BLUEPRINT.md
 
+## v3.2.0 — 2026-06-07 — codex-bridge protocol 3 (sub-agents + persistent agents) reflected into the adapter contract
+
+**Source**: Reciprocal-update directives from the sibling bridge repo (`claude-codex-orchestration` commit `d3f2965`), which shipped **bridge protocol 3**. Because `50-adapters/codex-bridge.md` cites the bridge wire-format as *authoritative-external*, a protocol bump is a contract change that MUST be reflected reciprocally. Ground truth verified against the live binary (`version → 3`; `capabilities --json` advertises `subagent`/`agent`, `agent_actions`, `agent_storage`, `agent_files`). Applied + **cross-family audited by Codex** (the directive author; INV 1.A), converging 2→0 must-fixes (ledger `jcc-p3-audit-001`).
+
+### Changed (protocol-3 contract surface)
+
+- **`50-adapters/codex-bridge.md`** (→ v3.0) — new `agent_storage_root`; protocol-3 probe block (`subagent`/`agent`, `subagent_actions`, `agent_actions`, `agent_storage`); `subagent run` + `agent run` dispatch rows + `agent_name`/`subagent_kind`/`--kind` argument mapping; `meta.env` gains `agent_name`+`subagent_kind`; new **Persistent-agent state** subsection (six `agent_files`); INV-10 trigger set extended to `run`/`start`/`subagent run`/`agent run` (with non-dispatch clarifier for `create`/`remember`/etc.); two new MUST-NOTs (no autonomous persistent agents; no unmanaged in-sandbox bridge children).
+- **`50-adapters/capability-matrix.md`** (→ v3.0) — codex-bridge sub-modes + protocol-3 probe row (`host_access` unchanged `false`/`false`); MAY note for persistent agents on read-only roles; explicit "protocol 3 changes no denial" confirmation.
+- **`adoption-guides/codex-bridge-adapter.md`** — §3 persistent-agents binding; §4 INV-10 trigger set; §5 protocol-3 bootstrap state + protocol-≥3 guard; §6 pinning bump; §7 sub-agent/persistent-agent sanity steps; agent-state storage note.
+- **`agents.config.yaml`** — `cached_protocol_probe.protocol` 1 → 3 (verified live); `config_revision` 6 → 7; `last_updated` 2026-06-07.
+- **`80-status/shipped-vs-planned.md`** — protocol-3 row (sub-agents + persistent agents shipped).
+
+### Fixed (pre-existing inaccuracies, surfaced by the bridge owner + the cross-family audit)
+
+- `prompt` argument mapping said `--prompt-file=<path>` — there is **no** such flag; prompt is positional after `--` (or stdin). Corrected.
+- `--sandbox` was described as accepted/precedence-ordered — the bridge does **not** accept first-class `--sandbox`; sandbox is selected by `--mode` (`design`→read-only, `implement`→full-auto). Corrected in `codex-bridge.md` + `capability-matrix.md`; only those two values are reachable today, others gated behind planned `--sandbox`.
+- `raw`-as-degradation-fallback contradicted the MUST-NOT (raw is non-shipped). Replaced with direct `codex exec` (recorded `adapter_degraded`) / inline.
+
+**Scope guard honored:** protocol 3 added only the sub-agent/persistent-agent surface — `host_access` unchanged (false/false), no role-denial rows changed, all "MUST NOT call non-shipped surface" rules intact.
+
 ## v3.1.0 — 2026-06-03 — workflow hardening (JCC research + C-UAS migration audit)
 
 **Source**: User directive — *"fix this workflow as per the highlighted gaps and research"* before handing the framework to adopters. Driven by a JCC workflow-improvement research pass (`jcc-workflow-research-001`) and a C-UAS migration completeness audit. Every change was **cross-family audited by Codex** (INV 1.A — builder ≠ auditor); the audit loop converged over three rounds (6 → 3 → 0 must-fixes) before landing (`jcc-v31-audit-001`, `jcc-v31-reaudit-001`).
